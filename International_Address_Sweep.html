@@ -1,187 +1,426 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>International Address</title>
-  <!-- Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <!-- Include PapaParse for easy CSV parsing -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Dancing+Script&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
   <style>
     body {
       font-family: 'Inter', sans-serif;
       font-size: 18px;
-      background-color: #e0e0e0;
       margin: 0;
       padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
+      background-color: #e0f7f5;
+      background-image: radial-gradient(circle at 20% 20%, #00bfa6 0%, transparent 25%),
+                        radial-gradient(circle at 80% 80%, #a7ffeb 0%, transparent 25%);
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
     }
+
     .card {
+      position: relative;
       background: white;
-      border-radius: 0;
-      box-shadow: none;
-      padding: 1rem;
-      width: 100%;
-      max-width: none;
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 4rem auto;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
     }
-    h1 {
-      margin: 0 0 1rem;
-      font-size: 2.5rem;
-      color: #333;
-    }
-    .controls {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-    input[type=file] {
-      display: none;
-    }
-    .btn {
-      padding: 1rem 2rem;
-      background: #0066cc;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    .btn:hover {
-      background: #005bb5;
-    }
-    .filename {
+
+    .author-credit {
+      position: absolute;
+      top: 16px;
+      right: 24px;
       font-size: 1rem;
       color: #555;
+      font-family: 'Dancing Script', cursive;
     }
+
+    h1 {
+      font-size: 2.5rem;
+      color: #00bfa6;
+      text-align: center;
+      margin-bottom: 2rem;
+      font-weight: 600;
+    }
+
+    .upload-area {
+      border: 2px dashed #00bfa6;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 700px;
+      height: 250px;
+      background-color: #f9ffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      padding: 20px;
+      margin: 0 auto 1.5rem;
+      cursor: pointer;
+      transition: transform 0.3s ease, background-color 0.3s, box-shadow 0.3s;
+    }
+
+    .upload-area:hover {
+      background-color: #e6fffb;
+      box-shadow: 0 0 12px rgba(0, 191, 166, 0.3);
+      transform: scale(1.02);
+    }
+
+    @keyframes dragGlow {
+      0%, 100% { box-shadow: 0 0 0 rgba(0,191,166,0.4); transform: scale(1); }
+      50% { box-shadow: 0 0 16px rgba(0,191,166,0.6); transform: scale(1.03); }
+    }
+
+    .upload-area.drag-active {
+      animation: dragGlow 0.8s ease-in-out infinite;
+      border-color: #00bfa6;
+    }
+
+    .upload-area p {
+      color: #00bfa6;
+      font-size: 16px;
+      margin: 0;
+    }
+
+    @keyframes cloudPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.85; }
+    }
+
+    .upload-area i.fa-cloud-upload-alt {
+      font-size: 48px;
+      color: #00bfa6;
+      margin-bottom: 12px;
+      animation: cloudPulse 2s infinite ease-in-out;
+    }
+
+    .ripple-container {
+      position: relative;
+      overflow: hidden;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .ripple-container .btn.teal-btn {
+      position: relative;
+      z-index: 1;
+      background-color: #00bfa6;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .btn.teal-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .ripple {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      transform: scale(0);
+      animation: rippleEffect 0.6s linear;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes rippleEffect {
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    @keyframes iconBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    @keyframes iconSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .download-btn i,
+    .reset-btn i {
+      transition: transform 0.3s ease;
+    }
+
+    .download-btn:hover i {
+      animation: iconBounce 1.5s infinite ease-in-out;
+    }
+
+    .reset-btn:hover i {
+      animation: iconSpin 1.5s linear infinite;
+    }
+
+    .download-btn, .reset-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 14px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #00bfa6;
+      background-color: white;
+      border: 2px solid #00bfa6;
+      border-radius: 50px;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(0, 191, 166, 0.3);
+      transition: background-color 0.3s, box-shadow 0.3s, color 0.3s;
+    }
+
+    .download-btn:hover, .reset-btn:hover {
+      background-color: #00bfa6;
+      color: white;
+      box-shadow: 0 6px 16px rgba(0, 191, 166, 0.5);
+    }
+
+    .loading {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: #0066cc;
+      font-weight: bold;
+    }
+
     table {
       width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      overflow-x: auto;
-      font-size: 1rem;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 2rem;
+      border-radius: 12px;
+      overflow: hidden;
     }
-    th, td {
-      padding: 0.5rem 1rem;
-      text-align: left;
-      white-space: nowrap;
-    }
+
     thead {
-      background: #0066cc;
+      background: #00bfa6;
       color: white;
     }
-    tbody tr:nth-child(even) {
-      background: #f9fafb;
-    }
-    tbody tr:hover {
-      background: #eef2ff;
-    }
-    p.no-data {
+
+    th, td {
+      padding: 1rem;
       text-align: center;
-      color: #777;
-      margin-top: 1rem;
-      font-size: 1rem;
+      border-bottom: 1px solid #eaeaea;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #f0fdfb;
+    }
+
+    tbody tr:hover {
+      background-color: #e0f7fa;
+    }
+
+    .copy-cell {
+      cursor: pointer;
+    }
+
+    .copy-cell:hover {
+      background-color: #f0f0f0;
+      border-radius: 6px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      background-color: #00bfa6;
+      color: white;
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 191, 166, 0.4);
+      font-size: 0.95rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
     }
   </style>
 </head>
 <body>
   <div class="card">
+    <p class="author-credit">By: Kathleen Delos Santos</p>
     <h1>International Address</h1>
-    <div class="controls">
-      <label for="fileInput" class="btn">Choose CSV</label>
-      <input type="file" id="fileInput" accept=".csv" />
-      <span id="fileNameDisplay" class="filename">No file selected</span>
-      <button id="processBtn" class="btn">Process File</button>
-      <a id="downloadLink" class="btn" download="filtered.csv" style="display:none;">Download Filtered CSV</a>
+
+    <div id="uploadArea" class="upload-area">
+      <i class="fas fa-cloud-upload-alt"></i>
+      <p>Drag & Drop to Upload File<br>OR</p>
+      <div class="ripple-container">
+        <button class="btn teal-btn" id="customBrowse">Browse File</button>
+      </div>
+      <input type="file" id="fileInput" accept=".csv" style="display: none;" />
     </div>
+
+    <div class="loading" id="loadingIndicator" style="display:none;">Loading...</div>
+
+    <div style="display: flex; gap: 12px; justify-content: center; margin-top: 1rem;">
+      <a id="downloadLink" class="download-btn" download="filtered.csv" style="display:none;">
+        DOWNLOAD <i class="fas fa-arrow-up-from-bracket"></i>
+      </a>
+      <button id="resetBtn" class="reset-btn" style="display: none;">
+        RESET <i class="fas fa-rotate-right"></i>
+      </button>
+    </div>
+
     <div id="tableContainer"></div>
   </div>
 
-  <script>
-    const fieldsToKeep = [
-      'Order - Number',
-      'Item - SKU',
-      'Ship To - City',
-      'Ship To - Address 1',
-      'Ship To - State'
-    ];
-    const usStates = [
-      'AL','AZ','AR','CA','CO','CT','DE','FL','GA',
-      'ID','IL','IN','IA','KS','KY','LA','ME','MD',
-      'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
-      'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC',
-      'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'
-    ];
-    const poRegex = /\bP\.?\s*O\.?\s*BOX\b/i;
+  <div id="toast" class="toast">Copied to clipboard!</div>
 
+  <script>
     const fileInput = document.getElementById('fileInput');
-    const fileNameDisplay = document.getElementById('fileNameDisplay');
-    fileInput.addEventListener('change', () => {
-      const name = fileInput.files.length ? fileInput.files[0].name : 'No file selected';
-      fileNameDisplay.textContent = name;
+    const uploadArea = document.getElementById('uploadArea');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
+    document.getElementById('customBrowse').addEventListener('click', () => {
+      fileInput.click();
     });
 
-    document.getElementById('processBtn').addEventListener('click', () => {
-      if (!fileInput.files.length) {
-        alert('Please select a CSV file.');
-        return;
+    document.querySelector('.ripple-container').addEventListener('click', function (e) {
+      const ripple = document.createElement('span');
+      ripple.classList.add('ripple');
+      const rect = this.getBoundingClientRect();
+      ripple.style.left = `${e.clientX - rect.left}px`;
+      ripple.style.top = `${e.clientY - rect.top}px`;
+      this.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    });
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('drag-active');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('drag-active');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-active');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'text/csv') {
+        fileInput.files = e.dataTransfer.files;
+        processCSV(file);
+      } else {
+        alert('Please drop a valid CSV file.');
       }
-      Papa.parse(fileInput.files[0], {
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) processCSV(fileInput.files[0]);
+    });
+
+    function processCSV(file) {
+      loadingIndicator.style.display = 'block';
+      Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         complete: ({ data }) => {
-          const filtered = data
-            .map(row => fieldsToKeep.reduce((acc, f) => (acc[f] = row[f]||'', acc), {}))
-            .filter(r => {
-              const state = (r['Ship To - State']||'').trim().toUpperCase();
-              const addr = r['Ship To - Address 1']||'';
-              return !usStates.includes(state) || poRegex.test(addr);
-            });
+          const fieldsToKeep = ['Order - Number','Item - SKU','Ship To - City','Ship To - Address 1','Ship To - State'];
+          const poRegex = /\bP\.?\s*O\.?\s*BOX\b/i;
+          const usStates = [...'AL,AK,AZ,AR,CA,CO,CT,DE,FL,GA,HI,ID,IL,IN,IA,KS,KY,LA,ME,MD,MA,MI,MN,MS,MO,MT,NE,NV,NH,NJ,NM,NY,NC,ND,OH,OK,OR,PA,RI,SC,SD,TN,TX,UT,VT,VA,WA,WV,WI,WY,DC'.split(',')];
+
+          const filtered = data.map(row =>
+            fieldsToKeep.reduce((acc, f) => (acc[f] = row[f] || '', acc), {})
+          ).filter(r => {
+            const stateVal = (r['Ship To - State'] || '').toUpperCase().replace(/\./g, '').trim();
+            const isPoBox = poRegex.test(r['Ship To - Address 1'] || '');
+            const isUSExcludingHIandAK = usStates.includes(stateVal) && stateVal !== 'HI' && stateVal !== 'AK';
+            return isPoBox || !isUSExcludingHIandAK;
+          });
+
           renderTable(filtered);
           prepareDownload(filtered);
+          loadingIndicator.style.display = 'none';
+        },
+        error: () => {
+          loadingIndicator.style.display = 'none';
+          alert('Error parsing file.');
         }
       });
-    });
+    }
 
     function renderTable(data) {
-      const c = document.getElementById('tableContainer');
-      c.innerHTML = '';
+      const container = document.getElementById('tableContainer');
+      container.innerHTML = '';
       if (!data.length) {
-        c.innerHTML = '<p class="no-data">No matching data found.</p>';
+        container.innerHTML = '<p class="no-data">No matching data found.</p>';
         return;
       }
-      const tbl = document.createElement('table');
+      const table = document.createElement('table');
       const thead = document.createElement('thead');
-      const tr = document.createElement('tr');
-      fieldsToKeep.forEach(f => { const th = document.createElement('th'); th.textContent = f; tr.appendChild(th); });
-      thead.appendChild(tr);
-      tbl.appendChild(thead);
+      const headerRow = document.createElement('tr');
+      const headers = ['Order - Number','Item - SKU','Ship To - City','Ship To - Address 1','Ship To - State'];
+      headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
       const tbody = document.createElement('tbody');
-      data.forEach(r => {
+      data.forEach(rowData => {
         const row = document.createElement('tr');
-        fieldsToKeep.forEach(f => {
-          const td = document.createElement('td'); td.textContent = r[f]; row.appendChild(td);
+        headers.forEach(header => {
+          const td = document.createElement('td');
+          td.textContent = rowData[header];
+          if (header === 'Order - Number') {
+            td.classList.add('copy-cell');
+            td.title = 'Click to copy';
+            td.addEventListener('click', () => {
+              navigator.clipboard.writeText(rowData[header]);
+              showToast();
+            });
+          }
+          row.appendChild(td);
         });
         tbody.appendChild(row);
       });
-      tbl.appendChild(tbody);
-      c.appendChild(tbl);
+      table.appendChild(tbody);
+      container.appendChild(table);
     }
 
     function prepareDownload(data) {
-      const csv = Papa.unparse(data, { columns: fieldsToKeep });
+      const csv = Papa.unparse(data);
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const link = document.getElementById('downloadLink');
       link.href = url;
-      link.style.display = 'inline-block';
+      link.style.display = 'inline-flex';
+      document.getElementById('resetBtn').style.display = 'inline-flex';
     }
+
+    function showToast() {
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      fileInput.value = '';
+      document.getElementById('tableContainer').innerHTML = '';
+      document.getElementById('downloadLink').style.display = 'none';
+      document.getElementById('resetBtn').style.display = 'none';
+      loadingIndicator.style.display = 'none';
+    });
   </script>
 </body>
 </html>
