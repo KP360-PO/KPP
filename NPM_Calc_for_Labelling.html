@@ -5,264 +5,381 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Net Margin Calculator</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 2rem; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: center; }
-    th { background: #f0f0f0; }
-    button { padding: 0.5rem 1rem; margin: 0.5rem; cursor: pointer; }
-    input[type="number"] { width: 80px; }
-    input[type="text"] { width: 100px; }
-    .computed { font-weight: bold; }
-    .over-limit { color: red; }
-    #fileInput { margin-bottom: 1rem; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background-image: url('https://images.unsplash.com/photo-1674397120584-b6e4c843387f?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+      background-repeat: no-repeat;
+      background-size: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+      height: 10px;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: center;
+    }
+    th {
+      background: #c5dbde;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      margin: 0.5rem;
+      cursor: pointer;
+      border-radius: 10px;
+      border: none;
+      background: #c5dbde;
+      font-size: 12px;
+    }
+    button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      color: black;
+      border: 1px solid;
+    }
+    input[type="number"] {
+      width: 80px;
+    }
+    input[type="text"] {
+      width: 100px;
+    }
+    .computed {
+      font-weight: bold;
+    }
+    .over-limit {
+      color: red;
+    }
+    #fileInput {
+      margin-bottom: 1rem;
+    }
+    .table-container {
+      width: 100%;
+      max-height: 400px;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+    #itemsTable {
+      min-width: 1200px;
+    }
+    tr.default-row {
+      background-color: #fbfbfb;
+    }
+    tr.default-row input {
+      background-color: #fff;
+      border: 1px dashed #ccc;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-<h1>Net Margin Calculator</h1>
+  <div style="border: 2px solid #a6a2a2; padding: 38px; background: rgba(225,225,225,0.3);">
+    <div class="main-container" style="display: flex; flex-direction: column; gap: 64px;">
+      <div class="title-header" style="display: flex; justify-content: center;">
+        <span class="title" style="font-size: 30px; font-weight: 600;">Net Margin Calculator</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <div>
+          <div style="display: flex; flex-direction: row; gap: 10px;">
+            <label for="fileInput">Upload Inventory Excel File:</label>
+            <input type="file" id="fileInput" accept=".xlsx, .xls" />
+          </div>
+          <div style="display: flex; flex-direction: row; gap: 10px; margin-top: 10px;">
+            <label for="orderFileInput">Upload Orders File:</label>
+            <input type="file" id="orderFileInput" accept=".xlsx, .xls" />
+          </div>
+        </div>
+        <div>
+          <label for="searchInput">Search Order ID:</label>
+          <input type="text" id="searchInput" placeholder="Search Site Order ID..." style="width: 53%; padding: 7px; border: none; border-radius: 10px; outline: none;" />
+        </div>
+      </div>
+    </div>
+    <br>
+    <div class="table-container">
+      <table id="itemsTable">
+        <thead style="white-space: nowrap; font-size:12px">
+          <tr>
+            <th>Site Order ID</th>
+            <th>Quantity</th>
+            <th>Unit Sales Price</th>
+            <th>Total Tax Price</th>
+            <th>Total Shipping Paid</th>
+            <th>Sales Order Total</th>
+            <th>Supplier Cost</th>
+            <th>Total Supplier Cost</th>
+            <th>ShipStation Shipping Fee</th>
+            <th>Merchant/List Fee</th>
+            <th>Total Cost</th>
+            <th>Net Profit</th>
+            <th>Net Profit Margin</th>
+            <th>SKU</th>
+            <th>Length</th>
+            <th>Width</th>
+            <th>Height</th>
+            <th>Weight</th>
+            <th>Girth</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div style="display: flex;">
+      <button id="addItemBtn">Add Item</button>
+      <button id="calculateBtn">Calculate Net Margin</button>
+      <button id="filterShippingBtn">Highlight Expensive Shipping (>$20)</button>
+<button id="saveToSheetBtn">Save to Google Sheet</button>
 
-<label for="fileInput">Upload Inventory Excel File:</label>
-<input type="file" id="fileInput" accept=".xlsx, .xls" />
-<br />
-<label for="orderFileInput">Upload Orders File (autofill sales data):</label>
-<input type="file" id="orderFileInput" accept=".xlsx, .xls" />
-<br />
-<label for="searchInput">Search Order ID:</label>
-<input type="text" id="searchInput" placeholder="Search Site Order ID..." />
-<br /><br />
+    </div>
+  </div>
 
-<table id="itemsTable">
-<thead>
-<tr>
-  <th>Site Order ID</th><th>Quantity</th><th>Unit Sales Price</th><th>Total Tax Price</th><th>Total Shipping Paid</th>
-  <th>Sales Order Total</th><th>Supplier Cost</th><th>Total Supplier Cost</th><th>ShipStation Shipping Fee</th>
-  <th>Merchant/List Fee</th><th>Total Cost</th><th>Net Profit</th><th>Net Profit Margin</th><th>SKU</th>
-  <th>Length</th><th>Width</th><th>Height</th><th>Weight</th><th>Girth</th><th>Action</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let inventoryData = {};
+      let orderData = {};
+      const tbody = document.querySelector('#itemsTable tbody');
 
-<button id="addItemBtn">Add Item</button>
-<button id="calculateBtn">Calculate Net Margin</button>
-<button id="filterShippingBtn">Highlight Expensive Shipping (>$20)</button>
+      function addItem() {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><input type="text" class="orderIdInput" placeholder="Order ID"></td>
+          <td><input type="number" class="quantity" placeholder="0" step="1"></td>
+          <td><input type="number" class="unitSalesPrice" placeholder="0.00" step="0.01"></td>
+          <td><input type="number" class="totalTaxPrice" placeholder="0.00" step="0.01"></td>
+          <td><input type="number" class="totalShippingPaid" placeholder="0.00" step="0.01"></td>
+          <td><span class="salesOrderTotal computed">0.00</span></td>
+          <td><input type="number" class="supplierCost" placeholder="0.00" step="0.01"></td>
+          <td><span class="totalSupplierCost computed">0.00</span></td>
+          <td><input type="number" class="shipStationFee" placeholder="0.00" step="0.01"></td>
+          <td><span class="merchantFee computed">0.00</span></td>
+          <td><span class="totalCost computed">0.00</span></td>
+          <td><span class="netProfit computed">0.00</span></td>
+          <td><span class="netMargin computed">0.00%</span></td>
+          <td><input type="text" class="sku" placeholder="SKU"></td>
+          <td><input type="number" class="length" placeholder="0" step="0.01"></td>
+          <td><input type="number" class="width" placeholder="0" step="0.01"></td>
+          <td><input type="number" class="height" placeholder="0" step="0.01"></td>
+          <td><input type="number" class="weight" placeholder="0" step="0.01"></td>
+          <td><span class="girth computed">0.00</span></td>
+          <td><button class="deleteBtn">Delete</button></td>
+        `;
+        tbody.appendChild(row);
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  let inventoryData = {};
-  let orderData = {};
-  const tbody = document.querySelector('#itemsTable tbody');
+        row.querySelector('.deleteBtn').addEventListener('click', () => {
+          row.remove();
+          checkDuplicateOrderIDs();
+        });
 
-  function addItem() {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-<td><input type="text" class="orderIdInput" placeholder="Order ID"></td>
-<td><input type="number" class="quantity" placeholder="0" step="1"></td>
-<td><input type="number" class="unitSalesPrice" placeholder="0.00" step="0.01"></td>
-<td><input type="number" class="totalTaxPrice" placeholder="0.00" step="0.01"></td>
-<td><input type="number" class="totalShippingPaid" placeholder="0.00" step="0.01"></td>
-<td><span class="salesOrderTotal computed">0.00</span></td>
-<td><input type="number" class="supplierCost" placeholder="0.00" step="0.01"></td>
-<td><span class="totalSupplierCost computed">0.00</span></td>
-<td><input type="number" class="shipStationFee" placeholder="0.00" step="0.01"></td>
-<td><span class="merchantFee computed">0.00</span></td>
-<td><span class="totalCost computed">0.00</span></td>
-<td><span class="netProfit computed">0.00</span></td>
-<td><span class="netMargin computed">0.00%</span></td>
-<td><input type="text" class="sku" placeholder="SKU"></td>
-<td><input type="number" class="length" placeholder="0" step="0.01"></td>
-<td><input type="number" class="width" placeholder="0" step="0.01"></td>
-<td><input type="number" class="height" placeholder="0" step="0.01"></td>
-<td><input type="number" class="weight" placeholder="0" step="0.01"></td>
-<td><span class="girth computed">0.00</span></td>
-<td><button class="deleteBtn">Delete</button></td>
-    `;
-    tbody.appendChild(row);
+        const skuInput = row.querySelector('.sku');
+        const orderIDInput = row.querySelector('.orderIdInput');
 
-    // Delete Row
-    row.querySelector('.deleteBtn').addEventListener('click', () => {
-      row.remove();
-      checkDuplicateOrderIDs();
-    });
+        skuInput.addEventListener('change', () => {
+          const skuKey = skuInput.value.trim();
+          if (inventoryData[skuKey]) {
+            const d = inventoryData[skuKey];
+            row.querySelector('.supplierCost').value = d.supplierCost.toFixed(2);
+            row.querySelector('.length').value = d.length;
+            row.querySelector('.width').value = d.width;
+            row.querySelector('.height').value = d.height;
+            row.querySelector('.weight').value = d.weight;
+          }
+        });
 
-    // SKU Autofill
-    const skuInput = row.querySelector('.sku');
-    skuInput.addEventListener('input', fillFromSKU);
-    skuInput.addEventListener('change', fillFromSKU);
+        orderIDInput.addEventListener('change', () => {
+          checkDuplicateOrderIDs();
+          const orderKey = orderIDInput.value.trim();
+          if (orderData[orderKey]) {
+            const d = orderData[orderKey];
+            const promptText = `Order "${orderKey}" found.\nAmount Paid: ${d.amountPaid}\nTax: ${d.tax}, Shipping: ${d.shippingPaid}\n\nUnit Sales Price = Amount Paid - Tax - Shipping\n\nClick OK to use calculated Unit Sales Price.`;
+            if (confirm(promptText)) {
+              const unitPrice = (d.amountPaid || 0) - (d.tax || 0) - (d.shippingPaid || 0);
+              row.querySelector('.quantity').value = d.quantity;
+              row.querySelector('.unitSalesPrice').value = unitPrice.toFixed(2);
+              row.querySelector('.totalTaxPrice').value = d.tax;
+              row.querySelector('.totalShippingPaid').value = d.shippingPaid;
 
-    function fillFromSKU() {
-      const key = skuInput.value.trim();
-      if (inventoryData[key]) {
-        const data = inventoryData[key];
-        row.querySelector('.supplierCost').value = data.supplierCost.toFixed(2);
-        row.querySelector('.length').value = data.length;
-        row.querySelector('.width').value = data.width;
-        row.querySelector('.height').value = data.height;
-        row.querySelector('.weight').value = data.weight;
+              const total = unitPrice * d.quantity + d.tax + d.shippingPaid;
+              row.querySelector('.salesOrderTotal').textContent = total.toFixed(2);
+            }
+          }
+        });
       }
-    }
 
-    // Order ID Autofill + Prompt
-    const orderIDInput = row.querySelector('.orderIdInput');
-    orderIDInput.addEventListener('input', () => {
-      checkDuplicateOrderIDs();
-      fillFromOrderId();
-    });
-    orderIDInput.addEventListener('change', () => {
-      checkDuplicateOrderIDs();
-      fillFromOrderId();
-    });
-
-    function fillFromOrderId() {
-      const key = orderIDInput.value.trim();
-      if (orderData[key]) {
-        const data = orderData[key];
-
-        const rawAmount = data.amountPaid || 0;
-        const tax = data.tax || 0;
-        const shipping = data.shippingPaid || 0;
-
-        const confirmMsg = `Order "${key}" found.\nAmount Paid: ${rawAmount}\nTax: ${tax}, Shipping: ${shipping}\n\nUnit Sales Price = Amount Paid - Tax - Shipping\n\nClick OK to proceed.`;
-        const proceed = confirm(confirmMsg);
-        if (!proceed) return;
-
-        const calculatedUnitPrice = rawAmount - tax - shipping;
-
-        row.querySelector('.quantity').value = data.quantity;
-        row.querySelector('.unitSalesPrice').value = calculatedUnitPrice.toFixed(2);
-        row.querySelector('.totalTaxPrice').value = tax;
-        row.querySelector('.totalShippingPaid').value = shipping;
-
-        const qty = +row.querySelector('.quantity').value || 0;
-        const total = calculatedUnitPrice * qty + tax + shipping;
-        row.querySelector('.salesOrderTotal').textContent = total.toFixed(2);
+      function checkDuplicateOrderIDs() {
+        const seen = {};
+        document.querySelectorAll('.orderIdInput').forEach(input => {
+          const val = input.value.trim();
+          input.style.backgroundColor = (!val ? '' : seen[val] ? 'yellow' : '');
+          if (val && !seen[val]) seen[val] = input;
+        });
       }
-    }
-  }
 
-  function checkDuplicateOrderIDs() {
-    const seen = {};
-    document.querySelectorAll('.orderIdInput').forEach(input => {
-      const val = input.value.trim();
-      input.style.backgroundColor = (!val ? '' : seen[val] ? 'yellow' : '');
-      if (val && !seen[val]) seen[val] = input;
-    });
-  }
+      function calculateNetMargin() {
+        document.querySelectorAll('#itemsTable tbody tr').forEach(row => {
+          const qty = +row.querySelector('.quantity').value || 0;
+          const unit = +row.querySelector('.unitSalesPrice').value || 0;
+          const tax = +row.querySelector('.totalTaxPrice').value || 0;
+          const shipping = +row.querySelector('.totalShippingPaid').value || 0;
+          const supplier = +row.querySelector('.supplierCost').value || 0;
+          const fee = +row.querySelector('.shipStationFee').value || 0;
 
-  function calculateNetMargin() {
-    document.querySelectorAll('#itemsTable tbody tr').forEach(row => {
-      const qty = +row.querySelector('.quantity').value || 0;
-      const unit = +row.querySelector('.unitSalesPrice').value || 0;
-      const tax = +row.querySelector('.totalTaxPrice').value || 0;
-      const shipping = +row.querySelector('.totalShippingPaid').value || 0;
-      const supplier = +row.querySelector('.supplierCost').value || 0;
-      const fee = +row.querySelector('.shipStationFee').value || 0;
+          const salesTotal = unit * qty + tax + shipping;
+          const totalSupplierCost = supplier * qty;
+          const merchantFee = salesTotal * 0.15;
+          const totalCost = totalSupplierCost + merchantFee + fee;
+          const netProfit = salesTotal - totalCost - tax;
+          const margin = salesTotal ? (netProfit / salesTotal) * 100 : 0;
 
-      const salesTotal = unit * qty + tax + shipping;
-      const totalSupplierCost = supplier * qty;
-      const merchantFee = salesTotal * 0.15;
-      const totalCost = totalSupplierCost + merchantFee + fee;
-      const netProfit = salesTotal - totalCost - tax;
-      const margin = salesTotal ? (netProfit / salesTotal) * 100 : 0;
+          row.querySelector('.salesOrderTotal').textContent = salesTotal.toFixed(2);
+          row.querySelector('.totalSupplierCost').textContent = totalSupplierCost.toFixed(2);
+          row.querySelector('.merchantFee').textContent = merchantFee.toFixed(2);
+          row.querySelector('.totalCost').textContent = totalCost.toFixed(2);
+          row.querySelector('.netProfit').textContent = netProfit.toFixed(2);
+          row.querySelector('.netMargin').textContent = margin.toFixed(2) + '%';
 
-      row.querySelector('.salesOrderTotal').textContent = salesTotal.toFixed(2);
-      row.querySelector('.totalSupplierCost').textContent = totalSupplierCost.toFixed(2);
-      row.querySelector('.merchantFee').textContent = merchantFee.toFixed(2);
-      row.querySelector('.totalCost').textContent = totalCost.toFixed(2);
-      row.querySelector('.netProfit').textContent = netProfit.toFixed(2);
-      row.querySelector('.netMargin').textContent = margin.toFixed(2) + '%';
+          const h = +row.querySelector('.height').value || 0;
+          const w = +row.querySelector('.width').value || 0;
+          const l = +row.querySelector('.length').value || 0;
+          const girth = 2 * h + 2 * w + l;
+          const girthEl = row.querySelector('.girth');
+          girthEl.textContent = girth.toFixed(2);
+          girthEl.classList.toggle('over-limit', girth > 105);
+        });
+      }
 
-      const h = +row.querySelector('.height').value || 0;
-      const w = +row.querySelector('.width').value || 0;
-      const l = +row.querySelector('.length').value || 0;
-      const girth = 2 * h + 2 * w + l;
-      const girthEl = row.querySelector('.girth');
-      girthEl.textContent = girth.toFixed(2);
-      girthEl.classList.toggle('over-limit', girth > 105);
-    });
-  }
+      function highlightHighShipping() {
+        document.querySelectorAll('#itemsTable tbody tr').forEach(row => {
+          const fee = +row.querySelector('.shipStationFee').value || 0;
+          row.style.backgroundColor = fee > 20 ? '#ffe5e5' : '';
+        });
+      }
 
-  function highlightHighShipping() {
-    document.querySelectorAll('#itemsTable tbody tr').forEach(row => {
-      const fee = +row.querySelector('.shipStationFee').value || 0;
-      row.style.backgroundColor = fee > 20 ? '#ffe5e5' : '';
-    });
-  }
+      function filterTableByOrderId() {
+        const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+        const rows = document.querySelectorAll('#itemsTable tbody tr');
+        rows.forEach(row => {
+          const orderIdInput = row.querySelector('.orderIdInput');
+          const orderId = orderIdInput?.value.trim().toLowerCase() || '';
+          row.style.display = orderId.includes(searchTerm) ? '' : 'none';
+        });
+      }
 
-  function filterTableByOrderId() {
-    const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
-    const rows = document.querySelectorAll('#itemsTable tbody tr');
+      document.getElementById('searchInput').addEventListener('input', filterTableByOrderId);
 
-    rows.forEach(row => {
-      const orderIdInput = row.querySelector('.orderIdInput');
-      const orderId = orderIdInput?.value.trim().toLowerCase() || '';
-      row.style.display = orderId.includes(searchTerm) ? '' : 'none';
-    });
-  }
-
-  document.getElementById('searchInput').addEventListener('input', filterTableByOrderId);
-
-  document.getElementById('fileInput').addEventListener('change', e => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = evt => {
-      const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet);
-      const skuField = 'Inventory Number' in json[0] ? 'Inventory Number' : 'SKU';
-      const costField = 'Seller Cost' in json[0] ? 'Seller Cost' : 'SupplierCost';
-      inventoryData = {};
-      json.forEach(r => {
-        const sku = r[skuField];
-        if (sku) {
-          inventoryData[sku] = {
-            supplierCost: +r[costField] || 0,
-            length: +r.Length || 0,
-            width: +r.Width || 0,
-            height: +r.Height || 0,
-            weight: +r.Weight || 0
-          };
-        }
+      document.getElementById('fileInput').addEventListener('change', e => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = evt => {
+          const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet);
+          const skuField = 'Inventory Number' in json[0] ? 'Inventory Number' : 'SKU';
+          const costField = 'Seller Cost' in json[0] ? 'Seller Cost' : 'SupplierCost';
+          inventoryData = {};
+          json.forEach(r => {
+            const sku = r[skuField];
+            if (sku) {
+              inventoryData[sku] = {
+                supplierCost: +r[costField] || 0,
+                length: +r.Length || 0,
+                width: +r.Width || 0,
+                height: +r.Height || 0,
+                weight: +r.Weight || 0
+              };
+            }
+          });
+          alert(`Loaded ${Object.keys(inventoryData).length} SKUs`);
+        };
+        reader.readAsArrayBuffer(file);
       });
-      alert(`Loaded ${Object.keys(inventoryData).length} SKUs`);
-    };
-    reader.readAsArrayBuffer(file);
+document.getElementById('saveToSheetBtn').addEventListener('click', saveToGoogleSheet);
+
+  function saveToGoogleSheet() {
+  const rows = [];
+  document.querySelectorAll('#itemsTable tbody tr').forEach(row => {
+    const orderId = row.querySelector('.orderIdInput').value.trim();
+    if (!orderId) return;
+
+    rows.push({
+      siteOrderId: orderId,
+      quantity: +row.querySelector('.quantity').value || 0,
+      unitSalesPrice: +row.querySelector('.unitSalesPrice').value || 0,
+      totalTaxPrice: +row.querySelector('.totalTaxPrice').value || 0,
+      totalShippingPaid: +row.querySelector('.totalShippingPaid').value || 0,
+      salesOrderTotal: +row.querySelector('.salesOrderTotal').textContent || 0,
+      supplierCost: +row.querySelector('.supplierCost').value || 0,
+      totalSupplierCost: +row.querySelector('.totalSupplierCost').textContent || 0,
+      shipStationShippingFee: +row.querySelector('.shipStationFee').value || 0,
+      merchantListFee: +row.querySelector('.merchantFee').textContent || 0,
+      totalCost: +row.querySelector('.totalCost').textContent || 0,
+      netProfit: +row.querySelector('.netProfit').textContent || 0,
+      netProfitMargin: parseFloat(row.querySelector('.netMargin').textContent) || 0,
+      sku: row.querySelector('.sku').value.trim(),
+      length: +row.querySelector('.length').value || 0,
+      width: +row.querySelector('.width').value || 0,
+      height: +row.querySelector('.height').value || 0,
+      weight: +row.querySelector('.weight').value || 0,
+      girth: +row.querySelector('.girth').textContent || 0
+    });
   });
 
-  document.getElementById('orderFileInput').addEventListener('change', e => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = evt => {
-      const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet);
+  if (rows.length === 0) {
+    alert('No valid rows to save (empty Order IDs will be skipped)');
+    return;
+  }
 
-      orderData = {};
-      json.forEach(r => {
-        const id = (r['Order #'] || '').toString().trim();
-        if (id) {
-          orderData[id] = {
-            quantity: r['Quantity'] || 0,
-            unitPrice: r['Rate'] || 0,
-            tax: r['Tax Paid'] || 0,
-            shippingPaid: r['Shipping Paid'] || 0,
-            amountPaid: r['Amount Paid'] || 0
-          };
-        }
+  const scriptUrl = 'https://script.google.com/macros/s/AKfycbwAd0mOAnN0xEUXcCSUblVcbpCXd5jaUr8MyiRr49PZKN5rtvqelvN34VkGhpiZURN8/exec';
+
+  // Create a form and submit it
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = scriptUrl;
+  form.target = '_blank'; // Open in new tab to see response
+
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'data';
+  input.value = JSON.stringify(rows);
+  form.appendChild(input);
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}      document.getElementById('orderFileInput').addEventListener('change', e => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = evt => {
+          const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet);
+          orderData = {};
+          json.forEach(r => {
+            const id = (r['Order #'] || '').toString().trim();
+            if (id) {
+              orderData[id] = {
+                quantity: r['Quantity'] || 0,
+                unitPrice: r['Rate'] || 0,
+                tax: r['Tax Paid'] || 0,
+                shippingPaid: r['Shipping Paid'] || 0,
+                amountPaid: r['Amount Paid'] || 0
+              };
+            }
+          });
+          alert(`Loaded ${Object.keys(orderData).length} orders for autofill.`);
+        };
+        reader.readAsArrayBuffer(file);
       });
 
-      alert(`Loaded ${Object.keys(orderData).length} orders for autofill.`);
-    };
-    reader.readAsArrayBuffer(file);
-  });
+      document.getElementById('addItemBtn').addEventListener('click', addItem);
+      document.getElementById('calculateBtn').addEventListener('click', calculateNetMargin);
+      document.getElementById('filterShippingBtn').addEventListener('click', highlightHighShipping);
 
-  document.getElementById('addItemBtn').addEventListener('click', addItem);
-  document.getElementById('calculateBtn').addEventListener('click', calculateNetMargin);
-  document.getElementById('filterShippingBtn').addEventListener('click', highlightHighShipping);
-
-  addItem();
-});
-</script>
-
+      addItem(); // Initial row
+    });
+  </script>
 </body>
 </html>
