@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eagle Inventory Refiner</title>
+  <style>
+    /* Color Palette */
+    :root {
+      --primary: #1E3A8A;
+      --secondary: #F3F4F6;
+      --accent: #F97316;
+      --spacing-xs: 0.5rem;
+      --spacing-sm: 1rem;
+      --spacing-md: 1.5rem;
+      --spacing-lg: 2rem;
+      --radius: 0.5rem;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: var(--primary);
+      padding: var(--spacing-md) var(--spacing-sm);
+    }
+    .header-title {
+      font-family: 'Roboto', system-ui, -apple-system, sans-serif;
+      font-size: 2rem;
+      color: white;
+      letter-spacing: 1px;
+    }
+    .header-author {
+      position: absolute;
+      right: var(--spacing-sm);
+      font-family: 'Roboto', system-ui, -apple-system, sans-serif;
+      font-size: 1rem;
+      color: white;
+    }
+
+    /* Base Typography & Layout */
+    html { font-size: 16px; }
+    body { margin: 0; background: var(--secondary); color: #111; line-height: 1.5; }
+    .container { max-width: 960px; margin: var(--spacing-lg) auto; padding: 0 var(--spacing-sm); display: flex; flex-direction: column; gap: var(--spacing-lg); }
+    .card { background: white; border-radius: var(--radius); box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-md); }
+    .card h2 { margin: 0; color: var(--primary); font-size: 1.5rem; border-bottom: 2px solid var(--accent); padding-bottom: var(--spacing-xs); }
+
+    /* File Input */
+    #file-input { width: 100%; padding: var(--spacing-sm); font-size: 1rem; border: 1px solid #ccc; border-radius: var(--radius); transition: border-color 0.2s; }
+    #file-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(249,115,22,0.2); }
+
+    /* Column Controls */
+    #column-controls { display: flex; gap: var(--spacing-sm); }
+    #column-controls button { padding: var(--spacing-xs) var(--spacing-sm); font-size: 1rem; border: 1px solid #ccc; border-radius: var(--radius); background: white; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; }
+    #column-controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #column-controls button:not(:disabled):hover { background: var(--secondary); border-color: var(--accent); }
+
+    /* Column Selector */
+    #column-selector { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+    #column-selector label { display: flex; align-items: center; gap: var(--spacing-xs); background: var(--secondary); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius); font-size: 0.95rem; cursor: pointer; transition: background-color 0.2s; }
+    #column-selector label:hover { background: #e5e7eb; }
+    #column-selector input { accent-color: var(--accent); }
+
+    /* Footer Controls */
+    .footer { display: flex; justify-content: space-between; align-items: center; background: var(--secondary); padding: var(--spacing-xs) var(--spacing-sm); border-radius: 0 0 var(--radius) var(--radius); }
+    .footer label { display: flex; align-items: center; gap: var(--spacing-xs); }
+    .footer input { transform: scale(1.2); accent-color: var(--accent); }
+    button.download { padding: var(--spacing-xs) var(--spacing-sm); font-size: 1rem; font-weight: bold; background: var(--primary); color: white; border: none; border-radius: var(--radius); cursor: pointer; transition: background-color 0.2s; }
+    button.download:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.download:not(:disabled):hover { background: #273c75; }
+
+    /* Table and Wrapper */
+    #table-wrapper { overflow-x: auto; }
+    #cleaned-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+    #cleaned-table th, #cleaned-table td { padding: var(--spacing-xs) var(--spacing-sm); border: 1px solid #ddd; text-align: left; vertical-align: top; font-size: 1rem; }
+    #cleaned-table th { background: var(--primary); color: white; }
+    #cleaned-table tbody tr:nth-child(even) { background: #fafafa; }
+    #cleaned-table tbody tr:hover { background: #f3f4f6; }
+
+    /* Centering when all columns selected */
+    #table-wrapper.all-columns-centered table { table-layout: fixed; width: 100%; }
+    #table-wrapper.all-columns-centered th, #table-wrapper.all-columns-centered td { text-align: center; vertical-align: middle; }
+
+    /* Responsive */
+    @media (min-width: 600px) { .container { flex-direction: column; } }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-title">Eagle Inventory Refiner</div>
+    <div class="header-author">By: Mariel Zipagan</div>
+  </div>
+  <div class="container">
+
+    <div class="card">
+      <h2>1. Upload File</h2>
+      <input type="file" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+    </div>
+
+    <div class="card">
+      <h2>2. Columns to Keep</h2>
+      <div id="column-controls">
+        <button id="select-all" disabled>Select All</button>
+        <button id="deselect-all" disabled>Deselect All</button>
+      </div>
+      <div id="column-selector"><em>Upload a file to see columns here…</em></div>
+    </div>
+
+    <div class="card">
+      <h2>3. Preview & Export</h2>
+      <div class="footer">
+        <label for="netsuite-mode">
+          <input type="checkbox" id="netsuite-mode" disabled />
+          Netsuite Inventory Mode
+        </label>
+        <button id="download-cleaned" class="download" disabled>Download</button>
+      </div>
+      <div id="table-wrapper"><table id="cleaned-table"></table></div>
+    </div>
+
+  </div>
+
+  <!-- SheetJS for parsing -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <script>
+  (function(){
+    const fileInput = document.getElementById('file-input');
+    const colSelector = document.getElementById('column-selector');
+    const tableWrapper = document.getElementById('table-wrapper');
+    const tableEl = document.getElementById('cleaned-table');
+    const downloadBtn = document.getElementById('download-cleaned');
+    const selectAllBtn = document.getElementById('select-all');
+    const deselectAllBtn = document.getElementById('deselect-all');
+    const netsuiteCheckbox = document.getElementById('netsuite-mode');
+
+    let cleanedData = [];
+    let allColumns = [];
+    const netsuiteMap = { "Available": 18, "Limited Quantity": 8, "Unavailable": 0 };
+
+    function cleanRows(rows) {
+      return rows
+        .map(row => {
+          const out = {};
+          Object.keys(row).forEach(k => {
+            let v = row[k];
+            if (typeof v === 'string') v = v.trim();
+            out[k] = v;
+          });
+          return out;
+        })
+        .filter(row =>
+          Object.values(row).some(val => val !== "" && val !== null && val !== undefined)
+        );
+    }
+
+    function renderColumnCheckboxes() {
+      colSelector.innerHTML = '';
+      allColumns.forEach(col => {
+        const id = 'chk-' + col.replace(/\s+/g,'_');
+        const lbl = document.createElement('label');
+        lbl.htmlFor = id;
+        lbl.innerHTML = `<input type="checkbox" id="${id}" name="cols" value="${col}" checked /><span>${col}</span>`;
+        colSelector.appendChild(lbl);
+      });
+      colSelector.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', () => renderTable(getSelectedColumns()));
+      });
+    }
+
+    function getSelectedColumns() {
+      return Array.from(colSelector.querySelectorAll('input[name=cols]:checked')).map(cb => cb.value);
+    }
+
+    function renderTable(cols) {
+      if (cols.length === allColumns.length) tableWrapper.classList.add('all-columns-centered');
+      else tableWrapper.classList.remove('all-columns-centered');
+
+      tableEl.innerHTML = '';
+      if (!cols.length) return;
+      const thead = tableEl.createTHead();
+      const hr = thead.insertRow();
+      cols.forEach(c => hr.appendChild(Object.assign(document.createElement('th'), { textContent: c })));
+      const tbody = tableEl.createTBody();
+      cleanedData.forEach(row => {
+        const tr = tbody.insertRow();
+        cols.forEach(c => {
+          const original = row[c];
+          let cellValue;
+          if (original === 0 || original === '0') {
+            cellValue = original;
+          } else if (netsuiteCheckbox.checked && c === 'Availability') {
+            cellValue = netsuiteMap[original] !== undefined ? netsuiteMap[original] : original;
+          } else {
+            cellValue = original != null ? original : '';
+          }
+          tr.appendChild(Object.assign(document.createElement('td'), { textContent: cellValue }));
+        });
+      });
+    }
+
+    selectAllBtn.addEventListener('click', () => { colSelector.querySelectorAll('input[name=cols]').forEach(cb => cb.checked = true); renderTable(getSelectedColumns()); });
+    deselectAllBtn.addEventListener('click', () => { colSelector.querySelectorAll('input[name=cols]').forEach(cb => cb.checked = false); renderTable(getSelectedColumns()); });
+    netsuiteCheckbox.addEventListener('change', () => renderTable(getSelectedColumns()));
+
+    fileInput.addEventListener('change', async e => {
+      const f = e.target.files[0]; if (!f) return;
+      const data = await f.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const arr = XLSX.utils.sheet_to_json(ws, { header:1, defval: '' });
+      const idx = arr.findIndex(r => r[0] === 'EE ITEM NO');
+      if (idx < 0) { alert("Header row 'EE ITEM NO' not found."); return; }
+      const headers = arr[idx];
+      cleanedData = arr.slice(idx + 1).map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] !== undefined ? r[i] : ''])));
+      cleanedData = cleanRows(cleanedData);
+      allColumns = Object.keys(cleanedData[0] || {});
+      renderColumnCheckboxes();
+      renderTable(allColumns);
+      [downloadBtn, selectAllBtn, deselectAllBtn, netsuiteCheckbox].forEach(el => el.disabled = false);
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const cols = getSelectedColumns();
+      if (!cols.length) return alert('Select at least one column.');
+      if (netsuiteCheckbox.checked) {
+        let csvContent = '\uFEFF' + cols.join(',') + '\r\n';
+        cleanedData.forEach(row => {
+          const rowArr = cols.map(c => {
+            const original = row[c];
+            let v;
+            if (original === 0 || original === '0') {
+              v = original;
+            } else if (c === 'Availability') {
+              v = netsuiteMap[original] !== undefined ? netsuiteMap[original] : original;
+            } else {
+              v = original != null ? original : '';
+            }
+            if (typeof v === 'string' && v.includes(',')) {
+              v = '"' + v.replace(/"/g,'""') + '"';
+            }
+            return v;
+          });
+          csvContent += rowArr.join(',') + '\r\n';
+        });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=UTF-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'cleaned_inventory.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } else {
+        const wsData = [cols];
+        cleanedData.forEach(row => {
+          wsData.push(cols.map(c => {
+            const original = row[c];
+            return (original === 0 || original === '0') ? original : (original != null ? original : '');
+          }));
+        });
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'cleaned_inventory.xlsx'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    });
+  })();
+  </script>
+</body>
+</html>
