@@ -2,81 +2,99 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Copy Paste Table</title>
+  <title>Order Sorting Page</title>
   <style>
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f4f7fb;
-      margin: 30px;
-      color: #333;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      background: linear-gradient(to right, #f0f4f8, #d9eaf7);
+      color: #2b2b2b;
     }
 
-    h2 {
-      color: #2b3a55;
-      border-bottom: 2px solid #d0d8e8;
-      padding-bottom: 6px;
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      color: #003f7d;
+      margin-bottom: 30px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    details {
+      margin-bottom: 30px;
+      border: 1px solid #ccc;
+      border-left: 6px solid #0077cc;
+      border-radius: 6px;
+      padding: 15px;
+      background-color: #ffffff;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    summary {
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #00509e;
+      margin-bottom: 10px;
     }
 
     textarea {
       width: 100%;
-      height: 100px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 10px;
-      font-family: monospace;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      height: 120px;
+      border: 1px solid #9eaecb;
+      border-radius: 6px;
+      padding: 12px;
+      background-color: #ffffff;
+      font-size: 14px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       margin-bottom: 10px;
     }
 
     button {
-      background-color: #2b6cb0;
+      margin: 10px 10px 0 0;
+      padding: 10px 18px;
+      background-color: #0077cc;
       color: white;
-      padding: 8px 16px;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
-      margin-bottom: 20px;
+      font-weight: bold;
+      font-size: 14px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
     }
 
     button:hover {
-      background-color: #2c5282;
+      background-color: #005fa3;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-      background-color: white;
-    }
-
-    thead {
-      background-color: #2b6cb0;
-      color: white;
+      margin-top: 20px;
+      background-color: #ffffff;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.08);
     }
 
     th, td {
-      border: 1px solid #d4d4d4;
-      padding: 10px;
+      border: 1px solid #bccce0;
+      padding: 12px;
       text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background-color: #003f7d;
+      color: #ffffff;
+      text-transform: uppercase;
     }
 
     td[contenteditable="true"] {
-      background-color: #f0f4fa;
+      background-color: #fdfaf3;
+      transition: background-color 0.3s ease;
     }
 
-    tbody tr:nth-child(even) {
-      background-color: #f9fbfc;
-    }
-
-    tbody tr:nth-child(odd) {
-      background-color: #ffffff;
-    }
-
-    #summary {
-      margin-top: 20px;
-      font-size: 16px;
+    td[contenteditable="true"]:focus {
+      background-color: #fff2cc;
+      outline: 2px solid #ffd966;
     }
 
     #summary span {
@@ -98,33 +116,62 @@
       background-color: #fde68a;
       color: #92400e;
     }
+
+    p {
+      margin-top: 12px;
+      font-weight: bold;
+      font-size: 16px;
+      color: #333;
+    }
   </style>
 </head>
 <body>
-  <h2>Copy-Paste Page</h2>
-  <p><strong>Expected Columns:</strong> Batch Number, Order Number, SKU1, SKU2, Qty, (Extra Column if needed)</p>
-  <textarea id="pasteArea" placeholder="Paste your data here with columns: Batch Number, Order Number, SKU1, SKU2, Qty, Extra"></textarea>
-  <button onclick="processData()">Paste and Display</button>
 
-  <h2>Processed Data (4 Columns)</h2>
-  <button onclick="copyTableData()">Copy Processed Data</button>
+  <h1>Order Sorting Page</h1>
 
-  <table id="resultTable">
-    <thead>
-      <tr>
-        <th>Order Number</th>
-        <th>SKU</th>
-        <th>Qty</th>
-        <th>Notes</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <details open>
+    <summary>Non-Mix Orders Sort</summary>
+    <textarea id="pasteArea" placeholder="Paste your data here with columns: Batch Number, Order Number, SKU1, SKU2, Qty, Extra"></textarea>
+    <button onclick="processData()">Paste and Display</button>
+    <button onclick="copyTableData()">Copy Processed Data</button>
 
-  <div id="summary">
-    <span>Total Qty: <span id="totalQty">0</span></span>
-    <span>Total Amazon Shipping Orders: <span id="amazonOrders">0</span></span>
-  </div>
+    <table id="resultTable">
+      <thead>
+        <tr>
+          <th>Order Number</th>
+          <th>SKU</th>
+          <th>Qty</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="summary">
+      <span>Total Qty: <span id="totalQty">0</span></span>
+      <span>Total Amazon Shipping Orders: <span id="amazonOrders">0</span></span>
+    </div>
+  </details>
+
+  <details>
+    <summary>Mix Orders Page (Expecting 6 Columns)</summary>
+    <textarea id="pasteInput" placeholder="Paste your 6-column data here (e.g., Batch Number, Order Number, SKU1, SKU2, Qty, Extra)..."></textarea>
+    <button onclick="processDataMix()">Display in Table</button>
+    <button onclick="copyTableDataMix()">Copy Processed Data</button>
+
+    <table id="outputTable">
+      <thead>
+        <tr>
+          <th>Order Number</th>
+          <th>SKU</th>
+          <th>Qty</th>
+          <th>notes</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p><strong>Total Qty:</strong> <span id="totalQtyMix">0</span></p>
+  </details>
 
   <script>
     function detectColumns(headerRow) {
@@ -153,7 +200,7 @@
       const headerCells = rows[0].split(/\t|,|\s{2,}/).map(cell => cell.trim());
       const { orderIndex, skuIndex, qtyIndex } = detectColumns(headerCells);
       const keywordsToOmit = [
-        "oos", "invalid", "cancel", "buyer cancelled", "cancelled", "expensive",
+        "oos", "invalid", "RO", "cancel", "buyer cancelled", "cancelled", "expensive",
         "buyer", "moved", "move", "mix", "buyer canceled", "buyercanceled", "MIX"
       ];
 
@@ -174,6 +221,8 @@
         } else {
           orderNum = lastOrderNum;
         }
+
+        if (/^RO/i.test(orderNum)) continue;
 
         const key = `${orderNum}||${sku}`;
         const shouldOmit = keywordsToOmit.some(keyword => rowText.includes(keyword.toLowerCase()));
@@ -237,13 +286,87 @@
         }
         text += rowData.join("\t") + "\n";
       }
-
       navigator.clipboard.writeText(text).then(() => {
         alert("Processed data copied to clipboard.");
       }, () => {
         alert("Failed to copy data.");
       });
     }
+
+    function cleanOrderNumber(orderNumber) {
+      const lastDashIndex = orderNumber.lastIndexOf("-");
+      if (lastDashIndex !== -1) {
+        return orderNumber.substring(0, lastDashIndex);
+      }
+      return orderNumber;
+    }
+
+    function processDataMix() {
+      const input = document.getElementById("pasteInput").value.trim();
+      const rows = input.split("\n");
+      const tbody = document.querySelector("#outputTable tbody");
+      const totalQtyDisplay = document.getElementById("totalQtyMix");
+      tbody.innerHTML = "";
+
+      if (rows.length === 0) return;
+
+      const header = rows[0].split(/\t|,|\s{2,}/).map(h => h.trim().toLowerCase());
+      const orderIndex = header.findIndex(h => h.includes("order"));
+      const skuIndex = header.findIndex(h => h.includes("sku1"));
+      const qtyIndex = header.findIndex(h => h.includes("qty") || h.includes("quantity"));
+
+      let totalQty = 0;
+
+      for (let i = 1; i < rows.length; i++) {
+        const cells = rows[i].split(/\t|,|\s{2,}/).map(c => c.trim());
+        if (cells.length <= Math.max(orderIndex, skuIndex, qtyIndex)) continue;
+
+        let orderNumber = cells[orderIndex];
+        const sku = cells[skuIndex];
+        const qty = cells[qtyIndex];
+        const notes = "";
+
+        const hasLetters = /[a-zA-Z]/.test(orderNumber);
+        const containsRO = orderNumber.toUpperCase().includes("RO");
+        if (!hasLetters || containsRO) continue;
+
+        orderNumber = cleanOrderNumber(orderNumber);
+
+        const tr = document.createElement("tr");
+        [orderNumber, sku, qty, notes].forEach(text => {
+          const td = document.createElement("td");
+          td.contentEditable = "true";
+          td.textContent = text;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+
+        const numericQty = parseFloat(qty);
+        if (!isNaN(numericQty)) {
+          totalQty += numericQty;
+        }
+      }
+
+      totalQtyDisplay.textContent = totalQty;
+    }
+
+    function copyTableDataMix() {
+      const table = document.getElementById("outputTable");
+      let text = "";
+      for (let row of table.rows) {
+        const rowData = [];
+        for (let cell of row.cells) {
+          rowData.push(cell.innerText);
+        }
+        text += rowData.join("\t") + "\n";
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Processed data copied to clipboard.");
+      }).catch(() => {
+        alert("Failed to copy data.");
+      });
+    }
   </script>
+
 </body>
 </html>
