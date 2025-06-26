@@ -1,52 +1,140 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html> 
+<html lang="en">
 <head>
-  <title>Amazon Shipping</title>
+  <meta charset="UTF-8" />
+  <title>Amazon Logistics Count</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-family: sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+      background-color: #ffffff; /* white background */
+    }
+
+    textarea {
+      width: 500px;
+      max-width: 90vw;
+      height: 200px;
+      font-family: monospace;
+      white-space: pre;
+      resize: vertical;
+      border: 2px solid #C8A2C8; /* pastel purple border */
+      border-radius: 4px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 10px;
+      margin-right: 10px;
+      background-color: #C8A2C8; /* pastel purple background */
+      border: none;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #B08CB0; /* slightly darker pastel purple on hover */
+    }
+
+    .result {
+      margin-top: 10px;
+      text-align: center;
+      width: 500px;
+      max-width: 90vw;
+    }
+  </style>
 </head>
 <body>
+  <div style="width: 500px; max-width: 90vw; display: flex; justify-content: flex-end; font-style: italic; font-weight: normal; margin-bottom: 10px;">
+    Made by: Daricalyn Rosales
+  </div>
+  <h2>Amazon Logistics Count</h2>
+  <textarea id="dataArea" placeholder="Input Orders"></textarea>
+  <br />
+  <button onclick="processData()">Process Data</button>
+  <button onclick="downloadCSV()">Download CSV</button>
 
-<h2>Amazon Shipping Count</h2>
+  <div class="result">
+    <p>Total Orders: <span id="col2Count">0</span></p>
+    <p>Total Quantity: <span id="col5Sum">0</span></p>
+  </div>
 
+  <script>
+    let processedLines = [];
+    let col2Count = 0;
+    let col5Sum = 0;
 
-<textarea id="myTextarea" rows="10" cols="50"></textarea>
+    function processData() {
+      const textarea = document.getElementById("dataArea");
+      const lines = textarea.value.trim().split("\n");
+      col2Count = 0;
+      col5Sum = 0;
+      processedLines = [];
 
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line === "" || line.replace(/\t/g, '') === "") continue;
 
-<p>Total Order: <span id="col1Count">0</span></p>
-<p>Total Item: <span id="col3Count">0</span></p>
-
-<script>
-  const textarea = document.getElementById("myTextarea");
-  const col1Display = document.getElementById("col1Count");
-  const col3Display = document.getElementById("col3Count");
-
-  function countColumns() {
-    const lines = textarea.value.trim().split(/\r\n|\r|\n/); 
-    let col1Count = 0;
-    let col3Count = 0;
-
-    
-    lines.forEach(line => {
-      
-      const columns = line.split(/[\s,]+/); 
-      
-      if (columns[0] && columns[0].trim() !== "") {
-        col1Count++;
+        const cols = line.split("\t");
+        if (cols.length >= 5) {
+          if (cols[1].trim() !== "") col2Count++;
+          const val = parseFloat(cols[4]);
+          if (!isNaN(val)) col5Sum += val;
+          processedLines.push([cols[1], cols[2], cols[4]]);
+        }
       }
 
-     
-      if (columns[2] && columns[2].trim() !== "") {
-        col3Count++;
+      document.getElementById("col2Count").textContent = col2Count;
+      document.getElementById("col5Sum").textContent = Math.round(col5Sum);
+    }
+
+    function downloadCSV() {
+      if (processedLines.length === 0) {
+        alert("No processed data available. Click 'Process Data' first.");
+        return;
       }
-    });
 
-   
-    col1Display.textContent = col1Count;
-    col3Display.textContent = col3Count;
-  }
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Order Number,SKU,Total Quantity\n";
 
- 
-  textarea.addEventListener("input", countColumns);
-</script>
+      processedLines.forEach(row => {
+        csvContent += row.map(val => `"${val}"`).join(",") + "\n";
+      });
 
+      csvContent += "\n";
+      csvContent += `"Total Orders","${col2Count}",\n`;
+      csvContent += `"Total Quantity","${Math.round(col5Sum)}",\n`;
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Amazon Logistics Count - ${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
 </body>
 </html>
