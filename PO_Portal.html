@@ -19,20 +19,43 @@
     .header-content h1 { font-size:2.5rem; color:var(--primary-color); }
     .header-content p { color:#555; margin-top:0.5rem; }
     #tool-viewer { display:none; flex:1; flex-direction:column; }
-	.video-wrapper {position: relative; width: 100%; height: 80vh; overflow: hidden;}
-	.video-wrapper.tool iframe {position: absolute; top: 0; left: 0; width: 100%; height: 100%;}
-	.video-wrapper.tutorial iframe {position: absolute; top: 0; left: 50%; transform: translateX(-50%); height: 100%; width: calc(80vh * (16/9));}
+    .video-wrapper {position: relative; width: 100%; height: 80vh; overflow: hidden;}
+    .video-wrapper.tool iframe {position: absolute; top: 0; left: 0; width: 100%; height: 100%;}
+    .video-wrapper.tutorial iframe {position: absolute; top: 0; left: 50%; transform: translateX(-50%); height: 100%; width: calc(80vh * (16/9));}
     #back-btn { background:var(--primary-color); color:#fff; border:none; padding:0.5rem 1rem; margin:var(--spacing); border-radius:var(--radius); cursor:pointer; align-self:start; }
     main { flex:1; max-width:1200px; margin:var(--spacing) auto; padding:0 var(--spacing); }
     .search-container { margin-bottom:var(--spacing); text-align:center; }
     .search-container select { width:100%; max-width:360px; padding:0.75rem 1rem; border:1px solid #ccc; border-radius:var(--radius); font-size:1rem; transition:border-color var(--transition); }
     .search-container select:focus { outline:none; border-color:var(--primary-color); box-shadow:0 0 0 3px rgba(36,48,94,0.15); }
     .projects-container { display:flex; flex-wrap:wrap; justify-content:center; gap:var(--spacing); }
-    .project-card { flex:1 1 calc(50% - var(--spacing)); max-width:360px; background:var(--card-bg); border-radius:var(--radius); box-shadow:0 4px 8px rgba(0,0,0,0.05); transition:transform var(--transition), box-shadow var(--transition); position:relative; overflow:hidden; margin:var(--spacing) 0; }
+    .project-card {
+      flex:1 1 calc(50% - var(--spacing));
+      max-width:360px;
+      background:var(--card-bg);
+      border-radius:var(--radius);
+      box-shadow:0 4px 8px rgba(0,0,0,0.05);
+      transition:transform var(--transition), box-shadow var(--transition);
+      position:relative;
+      overflow:hidden;
+      margin:var(--spacing) 0;
+    }
     .project-card:hover { transform:translateY(-4px); box-shadow:0 8px 16px rgba(0,0,0,0.1); }
-    .owner-toggle { display:block; margin:var(--spacing) auto 0; padding:0.5rem 1rem; background:var(--primary-color); color:#fff; border:none; border-radius:var(--radius); cursor:pointer; transition:background var(--transition); }
-    .owner-toggle:hover { background:var(--primary-hover); }
-    .owner-info { display:none; padding:var(--spacing); background:#f0f4f8; }
+    .owner-toggle { display:none; }
+    .owner-info {
+      display:none;
+      padding:var(--spacing);
+      background:#f0f4f8;
+      border-bottom:1px solid #e0e0e0;
+    }
+    .project-card:hover .owner-info,
+    .project-card:focus-within .owner-info {
+      display:block;
+    }
+    @media (hover: none) and (pointer: coarse) {
+      .owner-toggle { display:block; margin:var(--spacing) auto 0; }
+      .owner-info { display:none; }
+      .project-card:hover .owner-info { display:none; }
+    }
     .owner-photo { width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid var(--primary-color); display:block; margin:0 auto; }
     .owner-name { text-align:center; margin-top:0.5rem; color:var(--primary-color); font-weight:600; }
     .project-content { padding:var(--spacing); text-align:left; padding-bottom:calc(var(--spacing)*2); }
@@ -81,9 +104,9 @@
         <option value="CJ Paet">CJ Paet</option>
         <option value="Cheztierlee Arlos">Cheztierlee Arlos</option>
         <option value="Daryl Pagilagan">Daryl Pagilagan</option>
-  	<option value="Hyacinth Cipriano">Hyacinth Cipriano</option>
-	<option value="Jovilyn Leonaras">Jovilyn Leonaras</option>
-	<option value="Mariel Zipagan">Mariel Zipagan</option>
+        <option value="Hyacinth Cipriano">Hyacinth Cipriano</option>
+        <option value="Jovilyn Leonaras">Jovilyn Leonaras</option>
+        <option value="Mariel Zipagan">Mariel Zipagan</option>
       </select>
     </div>
     <div id="projects" class="projects-container">
@@ -293,15 +316,17 @@
           <a href="#" class="view-tutorial" data-tutorial-src="https://your.video.url/here">View Tutorial &rarr;</a>
         </div>
     </div>
+    </div>
   </main>
   <footer>
     &copy; 2025 KarParts360 PO TEAM.
   </footer>
-    <script>
+  <script>
     document.getElementById('modal-close').addEventListener('click',()=>{document.getElementById('welcome-modal').style.display='none';});
     document.getElementById('search').addEventListener('change',function(e){const term=e.target.value.toLowerCase();document.querySelectorAll('.project-card').forEach(card=>{const title=card.getAttribute('data-title').toLowerCase();card.style.display=term===''||title.includes(term)?'block':'none';});});
+    // Toggle for touch devices only
     document.querySelectorAll('.owner-toggle').forEach(btn=>btn.addEventListener('click',()=>{const info=btn.nextElementSibling;info.style.display=info.style.display==='block'?'none':'block';}));
-const wrapper = document.querySelector('.video-wrapper');
+    const wrapper = document.querySelector('.video-wrapper');
     document.querySelectorAll('.view-tool').forEach(link =>link.addEventListener('click', e => {e.preventDefault();const src = link.dataset.src;document.getElementById('tool-frame').src = src;wrapper.classList.remove('tutorial');wrapper.classList.add('tool');document.querySelector('main').style.display = 'none';document.getElementById('tool-viewer').style.display = 'flex';}));
     document.querySelectorAll('.view-tutorial').forEach(link =>link.addEventListener('click', e => {e.preventDefault();const src = link.dataset.tutorialSrc;document.getElementById('tool-frame').src = src;wrapper.classList.remove('tool');wrapper.classList.add('tutorial');document.querySelector('main').style.display = 'none';document.getElementById('tool-viewer').style.display = 'flex';}));
     document.getElementById('back-btn').addEventListener('click',()=>{document.getElementById('tool-viewer').style.display='none';document.querySelector('main').style.display='';document.getElementById('tool-frame').src='';});
