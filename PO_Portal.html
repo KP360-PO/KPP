@@ -296,7 +296,7 @@
           <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1Pi2Uct8KUWiMyimm_P1VMaF_aACHPpqV/preview">View Tutorial &rarr;</a>
         </div>
       </div>
-	<!-- Eagle Inventory Refiner -->
+    <!-- Eagle Inventory Refiner -->
        <div class="project-card" data-title="Mariel Zipagan">
         <button class="owner-toggle">Owners</button>
         <div class="owner-info">
@@ -330,11 +330,11 @@
     &copy; 2025 KarParts360 PO TEAM.
   </footer>
    <script>
-    // Clear clicked state and scroll on full page reload
-    window.addEventListener('load', function() {
-      localStorage.removeItem('clickedLinks');
-      localStorage.removeItem('po_projects_scroll');
-    });
+    // Do NOT clear clickedLinks on page load anymore!
+    // window.addEventListener('load', function() {
+    //   localStorage.removeItem('clickedLinks');
+    //   localStorage.removeItem('po_projects_scroll');
+    // });
 
     // Modal close
     document.getElementById('modal-close').addEventListener('click',()=>{document.getElementById('welcome-modal').style.display='none';});
