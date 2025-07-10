@@ -61,10 +61,48 @@
     .project-content { padding:var(--spacing); text-align:left; padding-bottom:calc(var(--spacing)*2); }
     .project-content h2 { font-size:1.25rem; color:var(--primary-color); margin-bottom:0.5rem; }
     .project-content p { color:#555; margin-bottom:1rem; font-size:0.95rem; }
-    .view-tool { position:absolute; bottom:var(--spacing); left:var(--spacing); text-decoration:none; font-weight:600; color:var(--primary-color); transition:border-color var(--transition); border-bottom:2px solid transparent; cursor:pointer; }
-    .view-tool:hover { border-color:var(--primary-hover); }
-    .view-tutorial { position:absolute; bottom:var(--spacing); right:var(--spacing); text-decoration:none; font-weight:600; color:var(--primary-color); transition:border-color var(--transition); border-bottom:2px solid transparent; cursor:pointer; }
-    .view-tutorial:hover { border-color:var(--primary-hover); }
+    .view-tool, .view-tutorial {
+      position:absolute;
+      bottom:var(--spacing);
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      text-decoration:none;
+      font-weight:600;
+      color:var(--primary-color);
+      transition:border-color var(--transition), background 0.2s;
+      border-bottom:2px solid transparent;
+      cursor:pointer;
+      background: none;
+      padding: 0.3em 1.2em 0.3em 0.8em;
+      border-radius: 1.2em;
+    }
+    .view-tool { left:var(--spacing); }
+    .view-tutorial { right:var(--spacing); }
+    .view-tool.clicked, .view-tutorial.clicked {
+      color: #fff;
+      background: var(--primary-color);
+      border-bottom:2px solid var(--primary-hover);
+    }
+    .view-tool .checkmark,
+    .view-tutorial .checkmark {
+      display: none;
+      font-size: 1.1em;
+      color: #fff;
+      background: var(--primary-hover);
+      border-radius: 50%;
+      width: 1.2em;
+      height: 1.2em;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1.2em;
+    }
+    .view-tool.clicked .checkmark,
+    .view-tutorial.clicked .checkmark {
+      display: inline-flex;
+    }
+    .view-tool:hover, .view-tutorial:hover { border-color:var(--primary-hover); }
     footer { background:#fff; text-align:center; padding:var(--spacing) 0; color:#777; font-size:0.875rem; border-top:1px solid #eaeaea; }
   </style>
 </head>
@@ -110,7 +148,7 @@
       </select>
     </div>
     <div id="projects" class="projects-container">
-      <!-- Ordering File Generator -->
+     <!-- Ordering File Generator -->
       <div class="project-card" data-title="Marcus Bañez,Kathleen Delos Santos">
         <button class="owner-toggle">Owners</button>
         <div class="owner-info">
@@ -291,15 +329,93 @@
   <footer>
     &copy; 2025 KarParts360 PO TEAM.
   </footer>
-  <script>
+   <script>
+    // Clear clicked state and scroll on full page reload
+    window.addEventListener('load', function() {
+      localStorage.removeItem('clickedLinks');
+      localStorage.removeItem('po_projects_scroll');
+    });
+
+    // Modal close
     document.getElementById('modal-close').addEventListener('click',()=>{document.getElementById('welcome-modal').style.display='none';});
-    document.getElementById('search').addEventListener('change',function(e){const term=e.target.value.toLowerCase();document.querySelectorAll('.project-card').forEach(card=>{const title=card.getAttribute('data-title').toLowerCase();card.style.display=term===''||title.includes(term)?'block':'none';});});
+
+    // Filter by owner
+    document.getElementById('search').addEventListener('change',function(e){
+      const term=e.target.value.toLowerCase();
+      document.querySelectorAll('.project-card').forEach(card=>{
+        const title=card.getAttribute('data-title').toLowerCase();
+        card.style.display=term===''||title.includes(term)?'block':'none';
+      });
+    });
+
     // Toggle for touch devices only
-    document.querySelectorAll('.owner-toggle').forEach(btn=>btn.addEventListener('click',()=>{const info=btn.nextElementSibling;info.style.display=info.style.display==='block'?'none':'block';}));
+    document.querySelectorAll('.owner-toggle').forEach(btn=>btn.addEventListener('click',()=>{
+      const info=btn.nextElementSibling;
+      info.style.display=info.style.display==='block'?'none':'block';
+    }));
+
+    function getProjectId(link) {
+      return link.dataset.src || link.dataset.tutorialSrc || link.href;
+    }
+
+    function restoreClickedLinks() {
+      const clicked = JSON.parse(localStorage.getItem('clickedLinks')||'{}');
+      document.querySelectorAll('.view-tool, .view-tutorial').forEach(link=>{
+        const id = getProjectId(link);
+        if(clicked[id]) link.classList.add('clicked');
+      });
+    }
+
+    function markLinkClicked(link) {
+      const id = getProjectId(link);
+      let clicked = JSON.parse(localStorage.getItem('clickedLinks')||'{}');
+      clicked[id] = true;
+      localStorage.setItem('clickedLinks', JSON.stringify(clicked));
+      link.classList.add('clicked');
+    }
+
+    function saveScroll() {
+      localStorage.setItem('po_projects_scroll', window.scrollY);
+    }
+    function restoreScroll() {
+      const y = +localStorage.getItem('po_projects_scroll');
+      if(y) setTimeout(()=>window.scrollTo(0, y), 1);
+    }
+
     const wrapper = document.querySelector('.video-wrapper');
-    document.querySelectorAll('.view-tool').forEach(link =>link.addEventListener('click', e => {e.preventDefault();const src = link.dataset.src;document.getElementById('tool-frame').src = src;wrapper.classList.remove('tutorial');wrapper.classList.add('tool');document.querySelector('main').style.display = 'none';document.getElementById('tool-viewer').style.display = 'flex';}));
-    document.querySelectorAll('.view-tutorial').forEach(link =>link.addEventListener('click', e => {e.preventDefault();const src = link.dataset.tutorialSrc;document.getElementById('tool-frame').src = src;wrapper.classList.remove('tool');wrapper.classList.add('tutorial');document.querySelector('main').style.display = 'none';document.getElementById('tool-viewer').style.display = 'flex';}));
-    document.getElementById('back-btn').addEventListener('click',()=>{document.getElementById('tool-viewer').style.display='none';document.querySelector('main').style.display='';document.getElementById('tool-frame').src='';});
+    document.querySelectorAll('.view-tool').forEach(link => link.addEventListener('click', e => {
+      e.preventDefault();
+      markLinkClicked(link);
+      saveScroll();
+      const src = link.dataset.src;
+      document.getElementById('tool-frame').src = src;
+      wrapper.classList.remove('tutorial');
+      wrapper.classList.add('tool');
+      document.querySelector('main').style.display = 'none';
+      document.getElementById('tool-viewer').style.display = 'flex';
+    }));
+    document.querySelectorAll('.view-tutorial').forEach(link => link.addEventListener('click', e => {
+      e.preventDefault();
+      markLinkClicked(link);
+      saveScroll();
+      const src = link.dataset.tutorialSrc;
+      document.getElementById('tool-frame').src = src;
+      wrapper.classList.remove('tool');
+      wrapper.classList.add('tutorial');
+      document.querySelector('main').style.display = 'none';
+      document.getElementById('tool-viewer').style.display = 'flex';
+    }));
+
+    document.getElementById('back-btn').addEventListener('click',()=>{
+      document.getElementById('tool-viewer').style.display='none';
+      document.querySelector('main').style.display='';
+      document.getElementById('tool-frame').src='';
+      restoreScroll();
+    });
+
+    // On load, restore clicked state and scroll (will be empty after reload)
+    restoreClickedLinks();
+    restoreScroll();
   </script>
 </body>
 </html>
