@@ -4,32 +4,138 @@
   <meta charset="UTF-8">
   <title>Order Tagging</title>
   <style>
-    :root {--primary-color: #2c3e50;--secondary-color: #ecf0f1;--accent-color: #3498db;--text-color: #34495e;--card-bg: #ffffff;--border-radius: 8px;--box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;}
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #ecf0f1;
+      --accent-color: #3498db;
+      --text-color: #34495e;
+      --card-bg: #ffffff;
+      --border-radius: 8px;
+      --box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
+    }
     * { box-sizing: border-box; }
-    body {margin: 0;padding: 0;font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;background: var(--secondary-color);color: var(--text-color);display: flex;justify-content: center;align-items: flex-start;min-height: 100vh;padding: 20px;}
-    .wrapper {max-width: 1200px;width: 100%;}
-    .header {display: flex;justify-content: space-between;align-items: center;margin-bottom: 20px;}
-    .header h1 {margin: 0;color: var(--primary-color);font-size: 24px;}
-    .byline {font-size: 14px;color: var(--text-color);font-style: italic;}
-    .card {background: var(--card-bg);border-radius: var(--border-radius);box-shadow: var(--box-shadow);padding: 20px;margin-bottom: 20px;}
-    textarea {width: 100%;height: 120px;padding: 10px;font-family: monospace;font-size: 14px;border: 1px solid #bdc3c7;border-radius: var(--border-radius);resize: vertical;background: #fafafa;}
-    .buttons {display: flex;gap: 10px;margin: 10px 0;}
-    button {padding: 8px 12px;font-size: 14px;font-weight: bold;color: #fff;background: var(--accent-color);border: none;border-radius: var(--border-radius);cursor: pointer;transition: background 0.3s ease;}
-    button:hover {background: #2980b9;}
-    .container {display: grid;grid-template-columns: 2fr 1fr;gap: 20px;}
-    .output-card {display: flex;flex-direction: column;}
-    .output-card h3 {margin: 0 0 10px;font-size: 16px;color: var(--primary-color);}
-    #output, #ordersOutput {flex: 1;overflow: auto;white-space: pre-wrap;background: var(--secondary-color);padding: 15px;border: 1px solid #bdc3c7;border-radius: var(--border-radius);font-family: monospace;font-size: 14px;color: var(--text-color);min-height: 180px;}
-    #total {text-align: left;font-size: 16px;margin: 20px 0 10px;color: var(--primary-color);font-weight: bold;}
-    .copy-btn {margin-bottom: 10px;align-self: flex-start;}
+    body {
+      margin: 0; padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--secondary-color);
+      color: var(--text-color);
+      display: flex; justify-content: center; align-items: flex-start;
+      min-height: 100vh; padding: 20px;
+    }
+    .wrapper { max-width: 1200px; width: 100%; }
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0; color: var(--primary-color); font-size: 24px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .byline {
+      font-size: 14px; color: var(--text-color); font-style: italic;
+    }
+
+    /* tooltip */
+    .tooltip {
+      position: relative; display: inline-block;
+      font-size: 18px; cursor: pointer; color: var(--accent-color);
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden; width: 300px;
+      background-color: rgba(0,0,0,0.75); color: #fff;
+      text-align: left; border-radius: 6px; padding: 10px;
+      position: absolute; z-index: 1;
+      top: 125%; bottom: auto; left: 50%;
+      transform: translateX(-50%); opacity: 0;
+      transition: opacity 0.3s; line-height: 1.4;
+      font-size: 13px;
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible; opacity: 1;
+    }
+    .tooltip .tooltiptext::after {
+      bottom: 100%; top: auto;
+      border-color: transparent transparent rgba(0,0,0,0.75) transparent;
+    }
+
+    .card {
+      background: var(--card-bg); border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow); padding: 20px; margin-bottom: 20px;
+    }
+    textarea {
+      width: 100%; height: 120px; padding: 10px;
+      font-family: monospace; font-size: 14px;
+      border: 1px solid #bdc3c7; border-radius: var(--border-radius);
+      resize: vertical; background: #fafafa;
+    }
+    .buttons {
+      display: flex; gap: 10px; margin: 10px 0;
+    }
+    button {
+      padding: 8px 12px; font-size: 14px; font-weight: bold;
+      color: #fff; background: var(--accent-color);
+      border: none; border-radius: var(--border-radius);
+      cursor: pointer; transition: background 0.3s ease;
+    }
+    button:hover { background: #2980b9; }
+    .container {
+      display: grid; grid-template-columns: 2fr 1fr; gap: 20px;
+    }
+    .output-card {
+      display: flex; flex-direction: column;
+    }
+    .output-card h3 {
+      margin: 0 0 10px; font-size: 16px;
+      color: var(--primary-color);
+    }
+    #output, #ordersOutput {
+      flex: 1; overflow: auto; white-space: pre-wrap;
+      background: var(--secondary-color); padding: 15px;
+      border: 1px solid #bdc3c7; border-radius: var(--border-radius);
+      font-family: monospace; font-size: 14px; color: var(--text-color);
+      min-height: 180px;
+    }
+    #total {
+      text-align: left; font-size: 16px;
+      margin: 20px 0 10px; color: var(--primary-color);
+      font-weight: bold;
+    }
+    .copy-btn {
+      margin-bottom: 10px; align-self: flex-start;
+    }
+    .alert {
+      background-color: #f8d7da; color: #721c24;
+      border: 1px solid #f5c6cb; padding: 10px;
+      border-radius: var(--border-radius); margin-bottom: 20px;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div class="wrapper">
     <div class="header">
-      <h1>Order Tagging</h1>
+      <h1>
+        Order Tagging
+        <span class="tooltip">ℹ️
+          <span class="tooltiptext">
+            <strong>How it works:</strong>
+            <ol style="margin:8px 0 0 16px;padding:0;">
+              <li>Read &amp; split input into trimmed lines.</li>
+              <li>Tokenize each line by semicolon or whitespace.</li>
+              <li>Ignore any <code>-MIX</code> orders.</li>
+              <li>Detect <code>-MM</code> suffixes and record full IDs.</li>
+              <li>Merge subsequent <code>-MM</code> SKUs into the base order.</li>
+              <li>Build final rows as [order, SKU1, SKU2?].</li>
+              <li>Display red alert listing full <code>-MM</code> IDs and instruction.</li>
+              <li>Format each row with tabs and “;;” into the output box.</li>
+              <li>Copy buttons grab formatted text or just order numbers.</li>
+            </ol>
+          </span>
+        </span>
+      </h1>
       <div class="byline">By: Christine Anastacio</div>
     </div>
+
     <div class="card">
       <h3>Input</h3>
       <textarea id="input" placeholder="Paste Order Numbers and SKUs here..."></textarea>
@@ -38,7 +144,10 @@
         <button onclick="resetAll()">Reset</button>
       </div>
     </div>
+
+    <div id="mm-alert" class="alert"></div>
     <div id="total">Total Orders: 0</div>
+
     <div class="container">
       <div class="card output-card">
         <h3>Formatted Output</h3>
@@ -57,112 +166,90 @@
     let lastOrders = [];
     function formatOrders() {
       const rawLines = document.getElementById('input').value
-        .split('\n')
-        .map(l => l.replace(/\r/g, ''));
-      const results = [];
-      const encountered = new Set();
-      let currentLine = [];
-      let ignoreCurrent = false;
-      let mmFlag = false;
+        .split('\n').map(l => l.replace(/\r/g, ''));
+      const results = [], encountered = new Set();
+      let currentLine = [], ignore = false, mmFlag = false, mmOrders = [];
 
-      for (let raw of rawLines) {
-        const line = raw.trim();
-        if (!line) continue;
-
+      for (let lineRaw of rawLines) {
+        const line = lineRaw.trim(); if (!line) continue;
         const tokens = line.includes(';')
           ? line.split(';').map(t => t.trim()).filter(t => t)
           : line.split(/\s+/).filter(t => t);
 
         if (tokens.length > 1) {
-          if (currentLine.length && !ignoreCurrent) {
-            results.push([...currentLine]);
-          }
-          let orderRaw = tokens[0];
-          const skus = tokens.slice(1);
+          if (currentLine.length && !ignore) results.push([...currentLine]);
+
+          let orderRaw = tokens[0], skus = tokens.slice(1);
 
           if (/-MIX/i.test(orderRaw)) {
-            ignoreCurrent = true;
-            mmFlag = false;
-            currentLine = [];
-            continue;
+            ignore = true; mmFlag = false; currentLine = []; continue;
           }
 
           mmFlag = /-MM\d*$/i.test(orderRaw);
+          if (mmFlag && !mmOrders.includes(orderRaw)) mmOrders.push(orderRaw);
+
           const order = orderRaw.replace(/-MM\d*$/i, '');
 
           if (mmFlag && encountered.has(order)) {
-            const orphanSkus = skus.slice(0, 2);
-            const mainRow = results.find(r => r[0] === order);
-            orphanSkus.forEach(sku => {
-              if (mainRow && mainRow.length < 3) {
-                mainRow.push(sku);
-              }
-            });
-            ignoreCurrent = true;
-            currentLine = [];
-            continue;
+            const orphan = skus.slice(0,2), main = results.find(r => r[0] === order);
+            orphan.forEach(s => { if (main && main.length < 3) main.push(s); });
+            ignore = true; currentLine = []; continue;
           }
 
           if (mmFlag) encountered.add(order);
-
-          ignoreCurrent = false;
+          ignore = false;
           currentLine = [order];
-          if (mmFlag) {
-            currentLine.push(...skus.slice(0, 2));
-          } else {
-            currentLine.push(...skus);
-          }
+          currentLine.push(...(mmFlag ? skus.slice(0,2) : skus));
         } else {
-          if (ignoreCurrent) continue;
+          if (ignore) continue;
           if (mmFlag && currentLine.length - 1 >= 2) continue;
           currentLine.push(tokens[0]);
         }
       }
 
-      if (currentLine.length && !ignoreCurrent) {
-        results.push([...currentLine]);
+      if (currentLine.length && !ignore) results.push([...currentLine]);
+
+      const alertDiv = document.getElementById('mm-alert');
+      if (mmOrders.length) {
+        alertDiv.textContent =
+          `⚠️ Multiple Items: ` +
+          mmOrders.join(', ') +
+          ' — Please check if mix warehouse. If not, check pasted SKUs in ShipStation.';
+        alertDiv.style.display = 'block';
+      } else {
+        alertDiv.style.display = 'none';
       }
 
       const formatted = results.map(r => r.join('\t') + '\t\t;');
       lastOrders = results.map(r => r[0]);
       document.getElementById('output').textContent = formatted.join('\n');
       document.getElementById('ordersOutput').textContent = lastOrders.join('\n');
-      document.getElementById('total').textContent = 'Total Orders: ' + formatted.length;
+      document.getElementById('total').textContent = 'Total Orders: ' + results.length;
     }
 
-  function copyOutput() {
-  	const btn = document.getElementById('copyFormattedBtn');
-  	const original = btn.textContent;
-  	const out = document.getElementById('output');
-  	const range = document.createRange();
-  	range.selectNodeContents(out);
-  	const sel = window.getSelection();
-  	sel.removeAllRanges();
-  	sel.addRange(range);
-  	document.execCommand('copy');
-  	sel.removeAllRanges();
-	  btn.textContent = 'Formatted Copied!';
-  	setTimeout(() => btn.textContent = original, 500);
-	}
+    function copyOutput() {
+      const btn = document.getElementById('copyFormattedBtn'), orig = btn.textContent;
+      const out = document.getElementById('output'), range = document.createRange(), sel = window.getSelection();
+      range.selectNodeContents(out); sel.removeAllRanges(); sel.addRange(range);
+      document.execCommand('copy'); sel.removeAllRanges();
+      btn.textContent = 'Formatted Copied!'; setTimeout(() => btn.textContent = orig, 500);
+    }
 
-  function copyOrders() {
-  	const btn = document.getElementById('copyOrdersBtn');
-  	const original = btn.textContent;
- 	  const text = lastOrders.join('\r\n');
-  	const ta = document.createElement('textarea');
-  	ta.style.position = 'absolute';ta.style.left = '-9999px';ta.value = text;
-  	document.body.appendChild(ta);ta.select();
-  	document.execCommand('copy');
-  	document.body.removeChild(ta);
-  	btn.textContent = 'Order Numbers Copied!';
-  	setTimeout(() => btn.textContent = original, 500);
-	}
+    function copyOrders() {
+      const btn = document.getElementById('copyOrdersBtn'), orig = btn.textContent;
+      const text = lastOrders.join('\r\n'), ta = document.createElement('textarea');
+      ta.style.position = 'absolute'; ta.style.left = '-9999px'; ta.value = text;
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = 'Order Numbers Copied!'; setTimeout(() => btn.textContent = orig, 500);
+    }
 
     function resetAll() {
       document.getElementById('input').value = '';
       document.getElementById('output').textContent = '';
       document.getElementById('ordersOutput').textContent = '';
       document.getElementById('total').textContent = 'Total Orders: 0';
+      document.getElementById('mm-alert').style.display = 'none';
       lastOrders = [];
     }
   </script>
