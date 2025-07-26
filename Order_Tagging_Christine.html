@@ -103,11 +103,25 @@
     .copy-btn {
       margin-bottom: 10px; align-self: flex-start;
     }
+
+    /* alerts */
     .alert {
-      background-color: #f8d7da; color: #721c24;
-      border: 1px solid #f5c6cb; padding: 10px;
-      border-radius: var(--border-radius); margin-bottom: 20px;
+      border-radius: var(--border-radius);
+      padding: 10px;
+      margin-bottom: 20px;
       display: none;
+    }
+    /* MM orders (red) */
+    #mm-alert {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    /* Removed orders (yellow highlight) */
+    #removed-alert {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
     }
   </style>
 </head>
@@ -127,6 +141,7 @@
               <li>Merge subsequent <code>-MM</code> SKUs into the base order.</li>
               <li>Build final rows as [order, SKU1, SKU2?].</li>
               <li>Display red alert listing full <code>-MM</code> IDs and instruction.</li>
+              <li>Display yellow alert listing removed <code>-MIX</code> orders.</li>
               <li>Format each row with tabs and “;;” into the output box.</li>
               <li>Copy buttons grab formatted text or just order numbers.</li>
             </ol>
@@ -145,7 +160,11 @@
       </div>
     </div>
 
+    <!-- MM alert (red) -->
     <div id="mm-alert" class="alert"></div>
+    <!-- Removed orders alert (yellow) -->
+    <div id="removed-alert" class="alert"></div>
+
     <div id="total">Total Orders: 0</div>
 
     <div class="container">
@@ -164,36 +183,60 @@
 
   <script>
     let lastOrders = [];
+
     function formatOrders() {
       const rawLines = document.getElementById('input').value
         .split('\n').map(l => l.replace(/\r/g, ''));
-      const results = [], encountered = new Set();
-      let currentLine = [], ignore = false, mmFlag = false, mmOrders = [];
+
+      const results = [];
+      const encountered = new Set();
+      let currentLine = [];
+      let ignore = false, mmFlag = false;
+      const mmOrders = [];
+      const removedOrders = [];
 
       for (let lineRaw of rawLines) {
-        const line = lineRaw.trim(); if (!line) continue;
+        const line = lineRaw.trim();
+        if (!line) continue;
+
         const tokens = line.includes(';')
           ? line.split(';').map(t => t.trim()).filter(t => t)
           : line.split(/\s+/).filter(t => t);
 
         if (tokens.length > 1) {
-          if (currentLine.length && !ignore) results.push([...currentLine]);
+          if (currentLine.length && !ignore) {
+            results.push([...currentLine]);
+          }
 
           let orderRaw = tokens[0], skus = tokens.slice(1);
 
+          // DETECT -MIX → record and skip
           if (/-MIX/i.test(orderRaw)) {
-            ignore = true; mmFlag = false; currentLine = []; continue;
+            removedOrders.push(orderRaw);
+            ignore = true;
+            mmFlag = false;
+            currentLine = [];
+            continue;
           }
 
+          // DETECT -MM suffix
           mmFlag = /-MM\d*$/i.test(orderRaw);
-          if (mmFlag && !mmOrders.includes(orderRaw)) mmOrders.push(orderRaw);
+          if (mmFlag && !mmOrders.includes(orderRaw)) {
+            mmOrders.push(orderRaw);
+          }
 
           const order = orderRaw.replace(/-MM\d*$/i, '');
 
+          // MERGE extra MM SKUs if we've seen this order before
           if (mmFlag && encountered.has(order)) {
-            const orphan = skus.slice(0,2), main = results.find(r => r[0] === order);
-            orphan.forEach(s => { if (main && main.length < 3) main.push(s); });
-            ignore = true; currentLine = []; continue;
+            const orphan = skus.slice(0,2),
+                  main = results.find(r => r[0] === order);
+            orphan.forEach(s => {
+              if (main && main.length < 3) main.push(s);
+            });
+            ignore = true;
+            currentLine = [];
+            continue;
           }
 
           if (mmFlag) encountered.add(order);
@@ -207,19 +250,35 @@
         }
       }
 
-      if (currentLine.length && !ignore) results.push([...currentLine]);
+      if (currentLine.length && !ignore) {
+        results.push([...currentLine]);
+      }
 
+      // RENDER MM alert
       const alertDiv = document.getElementById('mm-alert');
       if (mmOrders.length) {
         alertDiv.innerHTML =
           `⚠️ Multiple Items: <strong>` +
           mmOrders.join(', ') +
-          `</strong><br><small><em>(Note: Please check if this order is a MIX. If not, check pasted SKUs in ShipStation.)</em></small>`;
+          `</strong><br><small><em>(Check if these are MIX orders; if not, check pasted SKUs in ShipStation.)</em></small>`;
         alertDiv.style.display = 'block';
       } else {
         alertDiv.style.display = 'none';
       }
 
+      // RENDER Removed-orders alert
+      const removedDiv = document.getElementById('removed-alert');
+      if (removedOrders.length) {
+        removedDiv.innerHTML =
+          `❌ Removed Orders: <strong>` +
+          removedOrders.join(', ') +
+          `</strong><br><small><em>(MIX orders are ignored and not formatted.)</em></small>`;
+        removedDiv.style.display = 'block';
+      } else {
+        removedDiv.style.display = 'none';
+      }
+
+      // OUTPUT results
       const formatted = results.map(r => r.join('\t') + '\t\t;');
       lastOrders = results.map(r => r[0]);
       document.getElementById('output').textContent = formatted.join('\n');
@@ -228,20 +287,33 @@
     }
 
     function copyOutput() {
-      const btn = document.getElementById('copyFormattedBtn'), orig = btn.textContent;
-      const out = document.getElementById('output'), range = document.createRange(), sel = window.getSelection();
-      range.selectNodeContents(out); sel.removeAllRanges(); sel.addRange(range);
-      document.execCommand('copy'); sel.removeAllRanges();
-      btn.textContent = 'Formatted Copied!'; setTimeout(() => btn.textContent = orig, 500);
+      const btn = document.getElementById('copyFormattedBtn'),
+            orig = btn.textContent;
+      const out = document.getElementById('output'),
+            range = document.createRange(),
+            sel = window.getSelection();
+      range.selectNodeContents(out);
+      sel.removeAllRanges(); sel.addRange(range);
+      document.execCommand('copy');
+      sel.removeAllRanges();
+      btn.textContent = 'Formatted Copied!';
+      setTimeout(() => btn.textContent = orig, 500);
     }
 
     function copyOrders() {
-      const btn = document.getElementById('copyOrdersBtn'), orig = btn.textContent;
-      const text = lastOrders.join('\r\n'), ta = document.createElement('textarea');
-      ta.style.position = 'absolute'; ta.style.left = '-9999px'; ta.value = text;
-      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      const btn = document.getElementById('copyOrdersBtn'),
+            orig = btn.textContent;
+      const text = lastOrders.join('\r\n'),
+            ta = document.createElement('textarea');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
       document.body.removeChild(ta);
-      btn.textContent = 'Order Numbers Copied!'; setTimeout(() => btn.textContent = orig, 500);
+      btn.textContent = 'Order Numbers Copied!';
+      setTimeout(() => btn.textContent = orig, 500);
     }
 
     function resetAll() {
@@ -250,6 +322,7 @@
       document.getElementById('ordersOutput').textContent = '';
       document.getElementById('total').textContent = 'Total Orders: 0';
       document.getElementById('mm-alert').style.display = 'none';
+      document.getElementById('removed-alert').style.display = 'none';
       lastOrders = [];
     }
   </script>
