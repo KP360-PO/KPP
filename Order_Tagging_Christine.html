@@ -1,330 +1,93 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Order Tagging</title>
-  <style>
-    :root {
-      --primary-color: #2c3e50;
-      --secondary-color: #ecf0f1;
-      --accent-color: #3498db;
-      --text-color: #34495e;
-      --card-bg: #ffffff;
-      --border-radius: 8px;
-      --box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: var(--secondary-color);
-      color: var(--text-color);
-      display: flex; justify-content: center; align-items: flex-start;
-      min-height: 100vh; padding: 20px;
-    }
-    .wrapper { max-width: 1200px; width: 100%; }
-    .header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 20px;
-    }
-    .header h1 {
-      margin: 0; color: var(--primary-color); font-size: 24px;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .byline {
-      font-size: 14px; color: var(--text-color); font-style: italic;
-    }
-
-    /* tooltip */
-    .tooltip {
-      position: relative; display: inline-block;
-      font-size: 18px; cursor: pointer; color: var(--accent-color);
-    }
-    .tooltip .tooltiptext {
-      visibility: hidden; width: 300px;
-      background-color: rgba(0,0,0,0.75); color: #fff;
-      text-align: left; border-radius: 6px; padding: 10px;
-      position: absolute; z-index: 1;
-      top: 125%; bottom: auto; left: 50%;
-      transform: translateX(-50%); opacity: 0;
-      transition: opacity 0.3s; line-height: 1.4;
-      font-size: 13px;
-    }
-    .tooltip:hover .tooltiptext {
-      visibility: visible; opacity: 1;
-    }
-    .tooltip .tooltiptext::after {
-      bottom: 100%; top: auto;
-      border-color: transparent transparent rgba(0,0,0,0.75) transparent;
-    }
-
-    .card {
-      background: var(--card-bg); border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow); padding: 20px; margin-bottom: 20px;
-    }
-    textarea {
-      width: 100%; height: 120px; padding: 10px;
-      font-family: monospace; font-size: 14px;
-      border: 1px solid #bdc3c7; border-radius: var(--border-radius);
-      resize: vertical; background: #fafafa;
-    }
-    .buttons {
-      display: flex; gap: 10px; margin: 10px 0;
-    }
-    button {
-      padding: 8px 12px; font-size: 14px; font-weight: bold;
-      color: #fff; background: var(--accent-color);
-      border: none; border-radius: var(--border-radius);
-      cursor: pointer; transition: background 0.3s ease;
-    }
-    button:hover { background: #2980b9; }
-    .container {
-      display: grid; grid-template-columns: 2fr 1fr; gap: 20px;
-    }
-    .output-card {
-      display: flex; flex-direction: column;
-    }
-    .output-card h3 {
-      margin: 0 0 10px; font-size: 16px;
-      color: var(--primary-color);
-    }
-    #output, #ordersOutput {
-      flex: 1; overflow: auto; white-space: pre-wrap;
-      background: var(--secondary-color); padding: 15px;
-      border: 1px solid #bdc3c7; border-radius: var(--border-radius);
-      font-family: monospace; font-size: 14px; color: var(--text-color);
-      min-height: 180px;
-    }
-    #total {
-      text-align: left; font-size: 16px;
-      margin: 20px 0 10px; color: var(--primary-color);
-      font-weight: bold;
-    }
-    .copy-btn {
-      margin-bottom: 10px; align-self: flex-start;
-    }
-
-    /* alerts */
-    .alert {
-      border-radius: var(--border-radius);
-      padding: 10px;
-      margin-bottom: 20px;
-      display: none;
-    }
-    /* MM orders (red) */
-    #mm-alert {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
-    /* Removed orders (yellow highlight) */
-    #removed-alert {
-      background-color: #fff3cd;
-      color: #856404;
-      border: 1px solid #ffeeba;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="header">
-      <h1>
-        Order Tagging
-        <span class="tooltip">ℹ️
-          <span class="tooltiptext">
-            <strong>How it works:</strong>
-            <ol style="margin:8px 0 0 16px;padding:0;">
-              <li>Read &amp; split input into trimmed lines.</li>
-              <li>Tokenize each line by semicolon or whitespace.</li>
-              <li>Ignore any <code>-MIX</code> orders.</li>
-              <li>Detect <code>-MM</code> suffixes and record full IDs.</li>
-              <li>Merge subsequent <code>-MM</code> SKUs into the base order.</li>
-              <li>Build final rows as [order, SKU1, SKU2?].</li>
-              <li>Display red alert listing full <code>-MM</code> IDs and instruction.</li>
-              <li>Display yellow alert listing removed <code>-MIX</code> orders.</li>
-              <li>Format each row with tabs and “;;” into the output box.</li>
-              <li>Copy buttons grab formatted text or just order numbers.</li>
-            </ol>
-          </span>
-        </span>
-      </h1>
-      <div class="byline">By: Christine Anastacio</div>
-    </div>
-
-    <div class="card">
-      <h3>Input</h3>
-      <textarea id="input" placeholder="Paste Order Numbers and SKUs here..."></textarea>
-      <div class="buttons">
-        <button onclick="formatOrders()">Format</button>
-        <button onclick="resetAll()">Reset</button>
-      </div>
-    </div>
-
-    <!-- MM alert (red) -->
-    <div id="mm-alert" class="alert"></div>
-    <!-- Removed orders alert (yellow) -->
-    <div id="removed-alert" class="alert"></div>
-
-    <div id="total">Total Orders: 0</div>
-
-    <div class="container">
-      <div class="card output-card">
-        <h3>Formatted Output</h3>
-        <button id="copyFormattedBtn" class="copy-btn" onclick="copyOutput()">Copy Formatted</button>
-        <div id="output"></div>
-      </div>
-      <div class="card output-card">
-        <h3>Order Numbers</h3>
-        <button id="copyOrdersBtn" class="copy-btn" onclick="copyOrders()">Copy Order Numbers</button>
-        <div id="ordersOutput"></div>
-      </div>
-    </div>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Order Tagging</title><style>
+:root{--primary-color:#2c3e50;--secondary-color:#ecf0f1;--accent-color:#3498db;--text-color:#34495e;--card-bg:#fff;--border-radius:8px;--box-shadow:rgba(0,0,0,.1) 0 4px 12px}
+*{box-sizing:border-box}body{margin:0;padding:20px;font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;background:var(--secondary-color);color:var(--text-color);display:flex;justify-content:center;align-items:flex-start;min-height:100vh}
+.wrapper{max-width:1200px;width:100%}.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.header h1{margin:0;color:var(--primary-color);font-size:24px}.byline{font-size:14px;color:var(--text-color);font-style:italic}
+.card{background:var(--card-bg);border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:20px;margin-bottom:20px}
+textarea{width:100%;height:140px;padding:10px;font-family:monospace;font-size:14px;border:1px solid #bdc3c7;border-radius:var(--border-radius);resize:vertical;background:#fafafa}
+.buttons{display:flex;gap:10px;margin:10px 0}button{padding:8px 12px;font-size:14px;font-weight:700;color:#fff;background:var(--accent-color);border:0;border-radius:var(--border-radius);cursor:pointer;transition:background .3s}button:hover{background:#2980b9}
+.container{display:grid;grid-template-columns:2fr 1fr;gap:20px}.output-card{display:flex;flex-direction:column}.output-card h3{margin:0 0 10px;font-size:16px;color:var(--primary-color)}
+#output,#ordersOutput{flex:1;overflow:auto;white-space:pre-wrap;background:var(--secondary-color);padding:15px;border:1px solid #bdc3c7;border-radius:var(--border-radius);font-family:monospace;font-size:14px;color:var(--text-color);min-height:180px}
+#total{text-align:left;font-size:16px;margin:20px 0 10px;color:var(--primary-color);font-weight:700}.copy-btn{margin-bottom:10px;align-self:flex-start}
+.alert{border-radius:var(--border-radius);padding:10px;margin-bottom:20px;display:none;position:relative;animation:fadeIn .15s ease-out}.alert[data-visible=true]{display:block}
+#mm-alert{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}#removed-alert{background:#fff3cd;color:#856404;border:1px solid #ffeeba}#pair-plx-alert{background:#d1ecf1;color:#0c5460;border:1px solid #bee5eb}
+.alert .alert-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}.alert .badge{display:inline-block;min-width:22px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(0,0,0,.08)}
+.alert .title{font-weight:700}.alert .subtitle{font-size:12px;opacity:.9}.alert .actions{margin-left:auto;display:flex;gap:6px;align-items:center}
+.alert .actions button{background:transparent;color:inherit;border:1px solid currentColor;padding:4px 8px;border-radius:6px;font-size:12px;cursor:pointer}.alert .actions button:hover{opacity:.9}
+.alert .list{margin:6px 0 0;font-family:monospace;font-size:13px;line-height:1.5;white-space:normal;word-break:break-word}
+.alert .list.collapsed{max-height:60px;overflow:hidden;position:relative}.alert .list.collapsed::after{content:"";position:absolute;left:0;right:0;bottom:0;height:24px;background:linear-gradient(to bottom,rgba(255,255,255,0),rgba(255,255,255,.85))}
+.alert .toggle{display:inline-block;margin-top:6px;font-size:12px;cursor:pointer;text-decoration:underline}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@media(max-width:900px){.container{grid-template-columns:1fr}}
+</style></head><body>
+<div class="wrapper">
+  <div class="header"><h1>Order Tagging</h1><div class="byline">By: Christine Anastacio</div></div>
+  <div class="card"><h3>Input</h3>
+    <textarea id="input" placeholder="Paste data: Order Number ⟶ SKU ⟶ Golden SKU"></textarea>
+    <div class="buttons"><button onclick="formatOrders()">Format</button><button onclick="resetAll()">Reset</button></div>
   </div>
-
-  <script>
-    let lastOrders = [];
-
-    function formatOrders() {
-      const rawLines = document.getElementById('input').value
-        .split('\n').map(l => l.replace(/\r/g, ''));
-
-      const results = [];
-      const encountered = new Set();
-      let currentLine = [];
-      let ignore = false, mmFlag = false;
-      const mmOrders = [];
-      const removedOrders = [];
-
-      for (let lineRaw of rawLines) {
-        const line = lineRaw.trim();
-        if (!line) continue;
-
-        const tokens = line.includes(';')
-          ? line.split(';').map(t => t.trim()).filter(t => t)
-          : line.split(/\s+/).filter(t => t);
-
-        if (tokens.length > 1) {
-          if (currentLine.length && !ignore) {
-            results.push([...currentLine]);
-          }
-
-          let orderRaw = tokens[0], skus = tokens.slice(1);
-
-          // DETECT -MIX → record and skip
-          if (/-MIX/i.test(orderRaw)) {
-            removedOrders.push(orderRaw);
-            ignore = true;
-            mmFlag = false;
-            currentLine = [];
-            continue;
-          }
-
-          // DETECT -MM suffix
-          mmFlag = /-MM\d*$/i.test(orderRaw);
-          if (mmFlag && !mmOrders.includes(orderRaw)) {
-            mmOrders.push(orderRaw);
-          }
-
-          const order = orderRaw.replace(/-MM\d*$/i, '');
-
-          // MERGE extra MM SKUs if we've seen this order before
-          if (mmFlag && encountered.has(order)) {
-            const orphan = skus.slice(0,2),
-                  main = results.find(r => r[0] === order);
-            orphan.forEach(s => {
-              if (main && main.length < 3) main.push(s);
-            });
-            ignore = true;
-            currentLine = [];
-            continue;
-          }
-
-          if (mmFlag) encountered.add(order);
-          ignore = false;
-          currentLine = [order];
-          currentLine.push(...(mmFlag ? skus.slice(0,2) : skus));
-        } else {
-          if (ignore) continue;
-          if (mmFlag && currentLine.length - 1 >= 2) continue;
-          currentLine.push(tokens[0]);
-        }
-      }
-
-      if (currentLine.length && !ignore) {
-        results.push([...currentLine]);
-      }
-
-      // RENDER MM alert
-      const alertDiv = document.getElementById('mm-alert');
-      if (mmOrders.length) {
-        alertDiv.innerHTML =
-          `⚠️ Multiple Items: <strong>` +
-          mmOrders.join(', ') +
-          `</strong><br><small><em>(Check if these are MIX orders; if not, check pasted SKUs in ShipStation.)</em></small>`;
-        alertDiv.style.display = 'block';
-      } else {
-        alertDiv.style.display = 'none';
-      }
-
-      // RENDER Removed-orders alert
-      const removedDiv = document.getElementById('removed-alert');
-      if (removedOrders.length) {
-        removedDiv.innerHTML =
-          `❌ Removed Orders: <strong>` +
-          removedOrders.join(', ') +
-          `</strong><br><small><em>(MIX orders are ignored and not formatted.)</em></small>`;
-        removedDiv.style.display = 'block';
-      } else {
-        removedDiv.style.display = 'none';
-      }
-
-      // OUTPUT results
-      const formatted = results.map(r => r.join('\t') + '\t\t;');
-      lastOrders = results.map(r => r[0]);
-      document.getElementById('output').textContent = formatted.join('\n');
-      document.getElementById('ordersOutput').textContent = lastOrders.join('\n');
-      document.getElementById('total').textContent = 'Total Orders: ' + results.length;
+  <div id="mm-alert" class="alert"></div>
+  <div id="removed-alert" class="alert"></div>
+  <div id="pair-plx-alert" class="alert"></div>
+  <div id="total">Total Orders: 0</div>
+  <div class="container">
+    <div class="card output-card"><h3>Formatted Output</h3><button id="copyFormattedBtn" class="copy-btn" onclick="copyOutput()">Copy Formatted</button><div id="output"></div></div>
+    <div class="card output-card"><h3>Order Numbers</h3><button id="copyOrdersBtn" class="copy-btn" onclick="copyOrders()">Copy Order Numbers</button><div id="ordersOutput"></div></div>
+  </div>
+</div>
+<script>
+let lastOrders=[];
+const META_RX=/^(PLX|CLX|KLX|LLX)-/i, HAS_PAIR_RX=/(?:^|-)PAIR(?:-|$)/i;
+const copyTextSafe=t=>navigator.clipboard&&isSecureContext?navigator.clipboard.writeText(t).catch(()=>legacyCopy(t)):legacyCopy(t);
+function legacyCopy(t){const a=document.createElement("textarea");a.value=t;a.style.position="fixed";a.style.left="-9999px";document.body.appendChild(a);a.focus();a.select();try{document.execCommand("copy")}catch(e){}document.body.removeChild(a)}
+function renderAlert(id,o={}){const el=document.getElementById(id);if(!el)return;const{title="Notice",subtitle="",items=[],previewCount=5,copyLabel="Copy"}=o;const u=[...new Set(items.filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:"base"}));if(!u.length){el.dataset.visible="false";el.style.display="none";el.innerHTML="";return}const total=u.length,collapsed=total>previewCount,idsText=u.join(", ");el.setAttribute("role","alert");el.setAttribute("aria-live","polite");el.dataset.visible="true";el.style.display="block";el.innerHTML=`<div class="alert-head"><span class="title">${title}</span><span class="badge" aria-label="count">${total}</span><span class="subtitle">${subtitle}</span><div class="actions"><button type="button" data-action="copy">${copyLabel}</button><button type="button" data-action="dismiss" aria-label="Dismiss">Hide</button></div></div><div class="list ${collapsed?"collapsed":""}" data-role="list">${idsText}</div>${collapsed?`<a class="toggle" href="#" data-action="toggle">Show all ${total}</a>`:""}`;el.querySelector('[data-action="copy"]')?.addEventListener("click",e=>{e.preventDefault();copyTextSafe(u.join("\r\n"));e.target.textContent="Copied!";setTimeout(()=>e.target.textContent=copyLabel,700)});el.querySelector('[data-action="dismiss"]')?.addEventListener("click",e=>{e.preventDefault();el.dataset.visible="false";el.style.display="none"});el.querySelector('[data-action="toggle"]')?.addEventListener("click",e=>{e.preventDefault();const l=el.querySelector('[data-role="list"]');const c=l.classList.toggle("collapsed");e.target.textContent=c?`Show all ${total}`:"Show less"})}
+const mmSubtitle=()=>'<em>(MM orders are ignored and not formatted.)</em>';
+const removedSubtitle=()=>'<em>(MIX orders are ignored and not formatted.)</em>';
+const pairPlxSubtitle=()=>'<em>(Orders with PLX or PAIR meta, but only 1 SKU.)</em>';
+function formatOrders(){
+  const rawLines=document.getElementById("input").value.split("\n").map(l=>l.replace(/\r/g,""));
+  const results=[];let cur=[],ignore=false;
+  const mmOrders=[],removed=[],pairPlxOne=[];
+  const metaByOrder=new Map(); // order -> {plx:boolean,pair:boolean}
+  const markMeta=(order,metaTokens)=>{if(!order||!metaTokens?.length)return;const m=metaByOrder.get(order)||{plx:false,pair:false};metaTokens.forEach(t=>{if(META_RX.test(t)){if(/^PLX-/i.test(t))m.plx=true;if(HAS_PAIR_RX.test(t))m.pair=true}else if(HAS_PAIR_RX.test(t)){m.pair=true}});metaByOrder.set(order,m)};
+  for(let lr of rawLines){
+    if(!lr)continue;
+    const isCont=/^\s/.test(lr);
+    const line=lr.trim(); if(!line)continue;
+    let tokens=line.includes(";")?line.split(";").map(t=>t.trim()).filter(Boolean):line.split(/\s+/).filter(Boolean);
+    const metaTokens=tokens.filter(t=>META_RX.test(t)||HAS_PAIR_RX.test(t));
+    tokens=tokens.filter(t=>!META_RX.test(t)&&!HAS_PAIR_RX.test(t)); // strip meta from SKU stream
+    if(!isCont && tokens.length>1){ // new order row
+      if(cur.length&&!ignore)results.push([...cur]);
+      let orderRaw=tokens[0],skus=tokens.slice(1);
+      if(/-MIX/i.test(orderRaw)){removed.push(orderRaw);ignore=true;cur=[];continue}
+      if(/-MM\d*$/i.test(orderRaw)){mmOrders.push(orderRaw);ignore=true;cur=[];continue} // NEW: treat MM like MIX (remove)
+      const order=orderRaw.replace(/-MM\d*$/i,""); // clean base if someone pasted w/o catching above
+      markMeta(order,metaTokens);
+      ignore=false;cur=[order,...skus];
+    }else{ // continuation line
+      const tok=tokens[0]; const order=(cur[0]||null);
+      markMeta(order||null,metaTokens);
+      if(ignore||!tok)continue;
+      cur.push(tok);
     }
+  }
+  if(cur.length&&!ignore)results.push([...cur]);
 
-    function copyOutput() {
-      const btn = document.getElementById('copyFormattedBtn'),
-            orig = btn.textContent;
-      const out = document.getElementById('output'),
-            range = document.createRange(),
-            sel = window.getSelection();
-      range.selectNodeContents(out);
-      sel.removeAllRanges(); sel.addRange(range);
-      document.execCommand('copy');
-      sel.removeAllRanges();
-      btn.textContent = 'Formatted Copied!';
-      setTimeout(() => btn.textContent = orig, 500);
-    }
+  // Alerts
+  renderAlert("mm-alert",{title:"⚠️ Removed MM Orders",subtitle:mmSubtitle(),items:mmOrders,previewCount:5,copyLabel:"Copy MM IDs"});
+  renderAlert("removed-alert",{title:"❌ Removed Orders (MIX)",subtitle:removedSubtitle(),items:removed,previewCount:5,copyLabel:"Copy Removed"});
+  // PLX / PAIR but only 1 SKU (based on meta captured per base order)
+  results.forEach(r=>{const order=r[0],skuCount=r.length-1,meta=metaByOrder.get(order)||{plx:false,pair:false};if((meta.plx||meta.pair)&&skuCount<2)pairPlxOne.push(order)});
+  renderAlert("pair-plx-alert",{title:"🔔 PLX/PAIR Orders Missing SKU",subtitle:pairPlxSubtitle(),items:pairPlxOne,previewCount:8,copyLabel:"Copy Orders"});
 
-    function copyOrders() {
-      const btn = document.getElementById('copyOrdersBtn'),
-            orig = btn.textContent;
-      const text = lastOrders.join('\r\n'),
-            ta = document.createElement('textarea');
-      ta.style.position = 'absolute';
-      ta.style.left = '-9999px';
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      btn.textContent = 'Order Numbers Copied!';
-      setTimeout(() => btn.textContent = orig, 500);
-    }
-
-    function resetAll() {
-      document.getElementById('input').value = '';
-      document.getElementById('output').textContent = '';
-      document.getElementById('ordersOutput').textContent = '';
-      document.getElementById('total').textContent = 'Total Orders: 0';
-      document.getElementById('mm-alert').style.display = 'none';
-      document.getElementById('removed-alert').style.display = 'none';
-      lastOrders = [];
-    }
-  </script>
-</body>
-</html>
+  // Outputs (unchanged)
+  const formatted=results.map(r=>r.join("\t")+"\t\t;");lastOrders=results.map(r=>r[0]);
+  document.getElementById("output").textContent=formatted.join("\n");
+  document.getElementById("ordersOutput").textContent=lastOrders.join("\n");
+  document.getElementById("total").textContent="Total Orders: "+results.length;
+}
+function copyOutput(){const b=document.getElementById("copyFormattedBtn"),o=b.textContent,out=document.getElementById("output"),range=document.createRange(),sel=window.getSelection();range.selectNodeContents(out);sel.removeAllRanges();sel.addRange(range);document.execCommand("copy");sel.removeAllRanges();b.textContent="Formatted Copied!";setTimeout(()=>b.textContent=o,500)}
+function copyOrders(){const b=document.getElementById("copyOrdersBtn"),o=b.textContent,t=lastOrders.join("\r\n"),ta=document.createElement("textarea");ta.style.position="absolute";ta.style.left="-9999px";ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);b.textContent="Order Numbers Copied!";setTimeout(()=>b.textContent=o,500)}
+function resetAll(){document.getElementById("input").value="";document.getElementById("output").textContent="";document.getElementById("ordersOutput").textContent="";document.getElementById("total").textContent="Total Orders: 0";["mm-alert","removed-alert","pair-plx-alert"].forEach(id=>{const el=document.getElementById(id);el.style.display="none";el.dataset.visible="false"});lastOrders=[]}
+</script>
+</body></html>
