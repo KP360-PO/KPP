@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Partslink Lookup Tool</title>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; max-width: 1000px; }
+    input, button { margin: 10px 10px 10px 0; padding: 6px; font-size: 16px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+
+    .tyc-table th, .tyc-table td { background-color: #f3e8ff; }
+    .depo-table th, .depo-table td { background-color: #ffe8d6; }
+    .ksi-nj th, .ksi-nj td { background-color: #d0f0fd; }
+    .ksi-ga th, .ksi-ga td { background-color: #d5fdd0; }
+    .ksi-il th, .ksi-il td { background-color: #fff9cc; }
+    .eagle-nj th, .eagle-nj td { background-color: #fce4ec; }
+    .eagle-ca th, .eagle-ca td { background-color: #e8f5e9; }
+
+    .avail-unavailable {
+      color: #d32f2f; /* Red */
+      font-weight: bold;
+    }
+    .avail-limited {
+      color: #ffea00; /* Bright yellow */
+      font-weight: bold;
+    }
+    .avail-available {
+      font-weight: bold;
+    }
+
+    #watermark {
+      position: fixed;
+      bottom: 5px;
+      right: 10px;
+      font-size: 10px;
+      color: #aaa;
+    }
+    
+    #loadingIndicator {
+      display: none;
+      font-weight: bold;
+      color: #007bff;
+      margin-top: 10px;
+    }
+
+    #note {
+      font-size: 0.9em;
+      max-width: 600px;
+      margin-top: 4px;
+      margin-bottom: 20px;
+      line-height: 1.4em;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Partslink Lookup Tool</h2>
+
+<label>
+  Upload All Inventory Files:
+  <input type="file" id="allFiles" multiple accept=".csv,.xls,.xlsx" />
+</label>
+<p id="note">
+  <strong>Note:</strong> Save your files using these filenames for better results:<br>
+  <span style="color: #8e44ad;"><em>TYC inventory:</em></span> include <span style="color: #8e44ad;">"TYC"</span> in filename<br>
+  <span style="color: #2980b9;"><em>KSI inventory:</em></span> include <span style="color: #2980b9;">"KSI NJ"</span>, <span style="color: #2980b9;">"KSI GA"</span>, or <span style="color: #2980b9;">"KSI IL"</span> in filename<br>
+  <span style="color: #d35400;"><em>DEPO inventory:</em></span> include <span style="color: #d35400;">"DEPO"</span> in filename<br>
+  <span style="color: #27ae60;"><em>EAGLE inventory:</em></span> include <span style="color: #27ae60;">"EAGLE NJ"</span> or <span style="color: #27ae60;">"EAGLE CA"</span> in filename
+</p>
+
+<div id="loadingIndicator">Loading files, please wait...</div>
+
+<input type="text" id="partslinkInput" placeholder="Enter Partslink (e.g. FO2819124)" />
+<button id="searchBtn" disabled>Search</button>
+<button id="clearBtn">Clear</button>
+<button id="resetBtn">Reset</button>
+
+<div id="result"></div>
+<div id="watermark">jerrilyn</div>
+
+<script>
+let csvData = [], depoData = [];
+let ksiNJData = [], ksiGAData = [], ksiILData = [];
+let eagleNJData = [], eagleCAData = [];
+
+function cleanHeaders(row) {
+  const cleaned = {};
+  for (const key in row) {
+    cleaned[key.trim().toLowerCase()] = row[key]?.toString().trim();
+  }
+  return cleaned;
+}
+
+const loadingIndicator = document.getElementById('loadingIndicator');
+const searchBtn = document.getElementById('searchBtn');
+
+document.getElementById('allFiles').addEventListener('change', function(e) {
+  const files = e.target.files;
+
+  if (!files.length) {
+    searchBtn.disabled = true;
+    return;
+  }
+
+  loadingIndicator.style.display = 'block';
+  searchBtn.disabled = true;
+  document.getElementById('result').innerHTML = '';
+
+  csvData.length = 0;
+  depoData.length = 0;
+  ksiNJData.length = 0;
+  ksiGAData.length = 0;
+  ksiILData.length = 0;
+  eagleNJData.length = 0;
+  eagleCAData.length = 0;
+
+  let filesProcessed = 0;
+
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+      try {
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          const text = event.target.result.replace(/\r\n/g, '\n');
+          const lines = text.split('\n');
+          const headers = lines.shift().split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
+          csvData.push(...lines.map(line => {
+            const values = line.split(',');
+            const obj = {};
+            headers.forEach((h, i) => { obj[h] = values[i] ? values[i].replace(/"/g, '').trim() : ''; });
+            return obj;
+          }).filter(row => Object.keys(row).length > 1));
+
+        } else if (file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.xlsx')) {
+          const workbook = XLSX.read(event.target.result, { type: 'binary' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const fname = file.name.toLowerCase();
+
+          if (fname.includes('depo')) {
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            depoData = rows.map(row => row.map(cell => cell?.toString().trim().toUpperCase()));
+
+          } else if (fname.includes('ksi nj')) {
+            const rawData = XLSX.utils.sheet_to_json(sheet);
+            ksiNJData.push(...rawData.map(cleanHeaders));
+
+          } else if (fname.includes('ksi ga')) {
+            const rawData = XLSX.utils.sheet_to_json(sheet);
+            ksiGAData.push(...rawData.map(cleanHeaders));
+
+          } else if (fname.includes('ksi il')) {
+            const rawData = XLSX.utils.sheet_to_json(sheet);
+            ksiILData.push(...rawData.map(cleanHeaders));
+
+          } else if (fname.includes('eagle nj')) {
+            const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            rawData.forEach(row => {
+              if (row[6] && row[0]) {
+                eagleNJData.push({
+                  sku: row[0]?.toString().trim() || '',
+                  partslink: row[6]?.toString().trim().toUpperCase() || '',
+                  availability: row[16]?.toString().trim() || ''
+                });
+              }
+            });
+
+          } else if (fname.includes('eagle ca')) {
+            const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            rawData.forEach(row => {
+              if (row[6] && row[0]) {
+                eagleCAData.push({
+                  sku: row[0]?.toString().trim() || '',
+                  partslink: row[6]?.toString().trim().toUpperCase() || '',
+                  availability: row[16]?.toString().trim() || ''
+                });
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error processing file:', file.name, error);
+      }
+
+      filesProcessed++;
+      if (filesProcessed === files.length) {
+        loadingIndicator.style.display = 'none';
+        searchBtn.disabled = false;
+      }
+    };
+
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      reader.readAsText(file);
+    } else {
+      reader.readAsBinaryString(file);
+    }
+  });
+});
+
+document.getElementById('searchBtn').addEventListener('click', function () {
+  const input = document.getElementById('partslinkInput').value.trim().toUpperCase();
+  const resultDiv = document.getElementById('result');
+  resultDiv.innerHTML = '';
+
+  if (!input) {
+    resultDiv.innerHTML = "<p>⚠️ Please enter a Partslink number.</p>";
+    return;
+  }
+
+  const csvMatches = csvData.filter(row => row['partslink number']?.toUpperCase() === input);
+
+  const depoFiltered = depoData.filter((row, index) => {
+    if (index === 0) return false;
+    const pl = row[1];
+    return pl === input || pl?.startsWith(input);
+  });
+
+  const uniqueDepo = (() => {
+    const seen = new Set();
+    return depoFiltered.filter(row => {
+      const sku = row[0];
+      if (seen.has(sku)) return false;
+      seen.add(sku);
+      return true;
+    });
+  })();
+
+  const ksiFilter = (data) => {
+    return data.filter(row => {
+      const val = row['link_no']?.toUpperCase() || '';
+      return val === input || val.startsWith(input);
+    });
+  };
+
+  const uniqueByKey = (arr, key) => {
+    const seen = new Set();
+    return arr.filter(item => {
+      const val = item[key]?.toUpperCase();
+      if (seen.has(val)) return false;
+      seen.add(val);
+      return true;
+    });
+  };
+
+  const njMatches = uniqueByKey(ksiFilter(ksiNJData), 'ksi_no');
+  const gaMatches = uniqueByKey(ksiFilter(ksiGAData), 'ksi_no');
+  const ilMatches = uniqueByKey(ksiFilter(ksiILData), 'ksi_no');
+
+  const eagleNJ = eagleNJData.filter(row => row.partslink === input || row.partslink.startsWith(input));
+  const eagleCA = eagleCAData.filter(row => row.partslink === input || row.partslink.startsWith(input));
+
+  let html = `<h3>🔍 Results for: ${input}</h3>`;
+
+  if (csvMatches.length > 0) {
+    html += "<h4>📦 From TYC Inventory:</h4><table class=\"tyc-table\"><tr><th>Warehouse</th><th>Item Number</th><th>Saleable Quantity</th></tr>";
+    csvMatches.forEach(r => {
+      html += `<tr><td>${r['warehouse']}</td><td>${r['item number']}</td><td>${r['saleable quantity']}</td></tr>`;
+    });
+    html += "</table>";
+  }
+
+  if (uniqueDepo.length > 0) {
+    html += `<h4>📦 From DEPO Inventory:</h4><table class="depo-table">
+      <tr><th>SKU</th><th>NJ</th><th>IL</th><th>GA</th><th>CA</th></tr>`;
+    uniqueDepo.forEach(row => {
+      html += `<tr><td>${row[0] || ''}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td>${row[4] || ''}</td><td>${row[5] || ''}</td></tr>`;
+    });
+    html += "</table>";
+  }
+
+  const renderKSI = (data, label, className) => {
+    if (data.length === 0) return `<p>❌ No match found in ${label}.</p>`;
+    let out = `<h4>📁 From ${label}:</h4><table class="${className}"><tr><th>KSI_no</th><th>Qty</th></tr>`;
+    data.forEach(r => {
+      out += `<tr><td>${r['ksi_no']}</td><td>${r['qty']}</td></tr>`;
+    });
+    out += "</table>";
+    return out;
+  };
+
+  html += renderKSI(njMatches, "KSI NJ", "ksi-nj");
+  html += renderKSI(gaMatches, "KSI GA", "ksi-ga");
+  html += renderKSI(ilMatches, "KSI IL", "ksi-il");
+
+  const renderEagle = (data, label, className) => {
+    if (data.length === 0) return `<p>❌ No match found in ${label}.</p>`;
+    let out = `<h4>🦅 From ${label}:</h4><table class="${className}"><tr><th>SKU</th><th>Partslink</th><th>Availability</th></tr>`;
+    data.forEach(r => {
+      let availClass = '';
+      const availabilityLower = (r.availability || '').toLowerCase();
+      if (availabilityLower === 'unavailable') {
+        availClass = 'avail-unavailable';
+      } else if (availabilityLower === 'limited' || availabilityLower === 'limited quantity') {
+        availClass = 'avail-limited';
+      } else if (availabilityLower === 'available') {
+        availClass = 'avail-available';
+      }
+      out += `<tr><td>${r.sku}</td><td>${r.partslink}</td><td class="${availClass}">${r.availability || ''}</td></tr>`;
+    });
+    out += "</table>";
+    return out;
+  };
+
+  html += renderEagle(eagleNJ, "EAGLE NJ", "eagle-nj");
+  html += renderEagle(eagleCA, "EAGLE CA", "eagle-ca");
+
+  resultDiv.innerHTML = html;
+});
+
+document.getElementById('clearBtn').addEventListener('click', function () {
+  document.getElementById('partslinkInput').value = '';
+  document.getElementById('result').innerHTML = '';
+});
+
+document.getElementById('resetBtn').addEventListener('click', function () {
+  document.getElementById('allFiles').value = '';
+  csvData.length = 0;
+  depoData.length = 0;
+  ksiNJData.length = 0;
+  ksiGAData.length = 0;
+  ksiILData.length = 0;
+  eagleNJData.length = 0;
+  eagleCAData.length = 0;
+  document.getElementById('partslinkInput').value = '';
+  document.getElementById('result').innerHTML = '';
+  loadingIndicator.style.display = 'none';
+  searchBtn.disabled = true;
+});
+</script>
+
+</body>
+</html>
