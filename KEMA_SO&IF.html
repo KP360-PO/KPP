@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KEMA NetSuite File Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height:100%; overflow-x:hidden; }
+    body { font-family:"Segoe UI", Roboto, Arial, sans-serif; background:#f0f2f5; color:#333; display:flex; flex-direction:column; min-width:800px; }
+    header{display:flex;justify-content:space-between;align-items:center;background:#005b96;color:#fff;padding:.4rem;}
+    .title-block{display:flex;flex-direction:column;}
+    header h1{font-size:1.5rem;margin-bottom:2px;}
+    header small{font-size:0.9em;font-style:italic;color:#ddd;}.author{font-size:0.85rem;font-style:italic;}
+    .controls{ display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #ddd; padding:.75rem 1rem; gap:.5rem; position:relative; }
+    .controls-row{ display:flex; align-items:center; justify-content:space-between; }
+    .left-group, .right-group{ display:flex; align-items:center; gap:1rem; }
+    .filter-group{ position:relative; display:inline-flex; align-items:center; gap:1rem; }
+    .filter-btn{ padding:.5rem .75rem; border:none; border-radius:4px; background:#0077c8; color:#fff; cursor:pointer; font-size:.85rem; display:inline-flex; align-items:center; gap:4px; }
+    .filter-popover{ position:absolute; top:100%; right:0; background:#fff; border:1px solid #ccc; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,0.08); padding:.75rem; margin-top:6px; display:none; z-index:10; min-width:220px; }
+    .filter-popover label{ display:flex; align-items:center; gap:.5rem; margin-bottom:6px; font-size:.85rem; }
+    .filter-tags{ display:inline-flex; gap:6px; flex-wrap:wrap; }
+    .tag{ background:#e1f0ff; color:#005b96; padding:2px 6px; border-radius:12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:4px; }
+    .close-popover{ margin-left:auto; background:transparent; border:none; cursor:pointer; font-weight:bold; }
+    .controls input[type="file"], .controls input[type="text"]{ padding:.4rem .6rem; border:1px solid #ccc; border-radius:4px; font-size:.95rem; }
+    .controls button{ padding:.5rem 1rem; border:none; border-radius:4px; background:#005b96; color:#fff; font-size:.95rem; cursor:pointer; transition:background .2s; }
+    .controls button:disabled{ background:#999; cursor:default; }
+    .controls button:hover:not(:disabled){ background:#004470; }
+    main{ padding:1rem; flex:1; overflow:auto; }
+    #totalOrders{ font-size:.9rem; margin-bottom:.5rem; }
+    #report{ width:100%; overflow:hidden; }
+    table{ width:100%; table-layout:fixed; border-collapse:collapse; margin-top:1rem; }
+    thead{ background:#005b96; color:#fff; position:sticky; top:0; z-index:1; }
+    th, td{ padding:.3rem .4rem; border:1px solid #ddd; text-align:left; font-size:.75rem; word-break:break-word; }
+    tbody tr:nth-child(even){ background:#fafafa; }
+    tbody tr:hover{ background:#eef6fc; }
+    .editable{ outline:2px dashed #005b96; background:#fffbe6; }
+    .multi-line-indicator { font-size:0.65rem; color:#005b96; margin-left:4px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1>KEMA NetSuite File Generator</h1>
+    <small>Sales Order and Item Fulfillment files</small>
+  </div>
+  <span class="author">By: Christine Anastacio</span>
+</header>
+
+  <div class="controls">
+    <div class="controls-row">
+      <div class="left-group">
+        <input type="file" id="files" accept=".csv,.xls,.xlsx" multiple>
+        <input type="text" id="poInput" placeholder="KEMA PO Number">
+        <button id="addPoBtn">Add</button>
+        <div class="filter-group">
+          <button type="button" class="filter-btn" id="filterToggle">
+            Filters ▾
+          </button>
+          <div class="filter-tags" id="activeFilters"></div>
+          <div class="filter-popover" id="filterPopover">
+            <div style="display:flex; align-items:center; margin-bottom:6px;">
+              <strong style="font-size:0.9rem;">Filters</strong>
+              <button class="close-popover" id="closeFilter">×</button>
+            </div>
+            <label><input type="checkbox" id="excludeShipping"> Exclude Shipping (WD)</label>
+            <label><input type="checkbox" id="showSoNumber" disabled> Show SO Number</label>
+            <label><input type="checkbox" id="showDocNumber" disabled> Show Document Number</label>
+            <label><input type="checkbox" id="filterPLXPAIR"> PLX/PAIR SKU</label>
+          </div>
+        </div>
+      </div>
+      <div class="right-group">
+        <input type="text" id="filenameInput" placeholder="Filename" disabled>
+        <button id="downloadBtn" disabled>Download Report</button>
+        <button id="resetBtn" disabled>⟲</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div id="totalOrders">Total Orders: 0</div>
+    <div id="report"></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    const baseHeaders = [ "Date - Order Date", "Order - Number", "Item - SKU", "Item - Qty", "Custom - Field 1", "Custom - Field 2", "Custom - Field 3", "Ship To - Name", "PO Number", "Reference PO", "Carrier", "Carrier Fee", "Tracking Number", "Location" ];
+
+    // Removed "Ship From" → "Location" so Location no longer comes from Ship From
+    const synonyms = {
+      "Order #":         "Order - Number",
+      "Order Number":    "Order - Number",
+      "Document #":      "DOCUMENT NUMBER",
+      "Document Number": "DOCUMENT NUMBER",
+      "Tracking #":      "Tracking Number"
+    };
+
+    // Derive Location solely from Reference PO
+    function deriveLocationFromRef(ref) {
+      const s = String(ref || "").toUpperCase();
+      if (s.includes("NJ")) return "New Jersey Distribution Warehouse";
+      if (s.includes("IL")) return "Chicago Distribution Warehouse";
+      if (s.includes("GA")) return "Georgia Distribution Warehouse";
+      if (s.includes("CA")) return "California Distribution Warehouse";
+      return "";
+    }
+
+    const el = id => document.getElementById(id);
+    const files = el("files");
+    const poInput = el("poInput");
+    const addPoBtn = el("addPoBtn");
+    const resetBtn = el("resetBtn");
+    const filenameInput = el("filenameInput");
+    const downloadBtn = el("downloadBtn");
+    const excludeShipping = el("excludeShipping");
+    const showSoNumber = el("showSoNumber");
+    const showDocNumber = el("showDocNumber");
+    const filterPLXPAIR = el("filterPLXPAIR");
+    const totalOrders = el("totalOrders");
+    const report = el("report");
+    const filterToggle = el("filterToggle");
+    const filterPopover = el("filterPopover");
+    const closeFilter = el("closeFilter");
+    const activeFilters = el("activeFilters");
+
+    function sanitize(s){ return s.replace(/[®\\]/g, ""); }
+
+    let cellEdits = {};
+    let masterFile = null,
+        deltaFiles = [],
+        rawData = [],
+        currentData = [],
+        historyStack = [];
+
+    function pushHistory() {
+      historyStack.push(JSON.parse(JSON.stringify(currentData)));
+      resetBtn.disabled = false;
+    }
+
+    function updateFilterTags() {
+      activeFilters.innerHTML = "";
+      const tags = [];
+      if (excludeShipping.checked) tags.push("No Shipping (WD)");
+      if (showSoNumber.checked) tags.push("SO #");
+      if (showDocNumber.checked) tags.push("Doc #");
+      if (filterPLXPAIR.checked) tags.push("PLX/PAIR");
+      tags.forEach(t => {
+        const span = document.createElement("span");
+        span.className = "tag";
+        span.textContent = t;
+        activeFilters.appendChild(span);
+      });
+    }
+
+    async function parseFile(file) {
+      if (/\.csv$/i.test(file.name)) {
+        return new Promise(res => Papa.parse(file, {
+          header: true, skipEmptyLines: true,
+          complete: ({data}) => res(data)
+        }));
+      } else {
+        return new Promise(res => {
+          const fr = new FileReader();
+          fr.onload = e => {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+            res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:"" }));
+          };
+          fr.readAsArrayBuffer(file);
+        });
+      }
+    }
+
+    function normalizeRow(row) {
+      const r = {...row};
+      if (r.Service) r.Carrier = r.Service;
+
+      // Apply synonyms
+      Object.entries(synonyms).forEach(([from,to]) => {
+        if (r[from]!=null && (!r[to]||String(r[to]).trim()==="")) r[to] = r[from];
+      });
+
+      // Date normalize
+      if (r["Date - Order Date"]) {
+        const d = new Date(r["Date - Order Date"]);
+        if (!isNaN(d)) r["Date - Order Date"] = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+      }
+
+      // Clean strings
+      Object.keys(r).forEach(k => {
+        if (typeof r[k] === "string") r[k] = sanitize(r[k]);
+      });
+
+      // LOCATION: derive ONLY from Reference PO
+      if (r["Reference PO"]) {
+        r.Location = deriveLocationFromRef(r["Reference PO"]);
+      }
+
+      return r;
+    }
+
+    function getActiveHeaders() {
+      const h = [...baseHeaders];
+      if (showSoNumber.checked) {
+        const idx = h.indexOf("Order - Number");
+        h.splice(idx + 1, 0, "SO NUMBER");
+      }
+      if (showDocNumber.checked) {
+        let idx = h.indexOf("SO NUMBER");
+        if (idx === -1) idx = h.indexOf("Order - Number");
+        h.splice(idx + 1, 0, "DOCUMENT NUMBER");
+      }
+      return h;
+    }
+
+    async function rebuildReport() {
+      if (!masterFile) return;
+      const masterRows = (await parseFile(masterFile)).map(normalizeRow);
+      const masterOrders = new Set(masterRows.map(r => r["Order - Number"]));
+      let data = masterRows.slice();
+
+      for (let i = 0; i < deltaFiles.length; i++) {
+        const rows = (await parseFile(deltaFiles[i])).map(normalizeRow);
+
+        // i === 1 block (unchanged): populate Reference PO from PO Number if missing
+        if (i === 1) {
+          rows.forEach(r => {
+            if (!masterOrders.has(r["Order - Number"])) return;
+            const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
+            if ((!m["Reference PO"]||m["Reference PO"].trim()==="") && r["PO Number"]) {
+              m["Reference PO"] = r["PO Number"];
+              // Update Location since Reference PO is now known
+              m.Location = deriveLocationFromRef(m["Reference PO"]);
+            }
+          });
+          continue;
+        }
+
+        // Merge other columns as before
+        const mergeCols = [
+          ...baseHeaders.filter(h => h !== "Order - Number"),
+          "SO NUMBER", "DOCUMENT NUMBER"
+        ];
+        rows.forEach(r => {
+          if (!masterOrders.has(r["Order - Number"])) return;
+          const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
+          mergeCols.forEach(col => {
+            if ((!m[col]||String(m[col]).trim()==="") && r[col]) {
+              m[col] = r[col];
+            }
+          });
+          // If Reference PO got filled by this merge, update Location
+          if (m["Reference PO"]) {
+            m.Location = deriveLocationFromRef(m["Reference PO"]);
+          }
+        });
+      }
+
+      // split Custom - Field 2 logic (unchanged)
+      const grouped = {};
+      data.forEach(r => {
+        (grouped[r["Order - Number"]] = grouped[r["Order - Number"]]||[]).push(r);
+      });
+      let interim = [];
+      Object.values(grouped).forEach(g => {
+        if (g.length > 1) {
+          g.forEach(r => {
+            const cf2 = r["Custom - Field 2"] || "";
+            if (String(cf2).trim()) r["Custom - Field 1"] = cf2;
+            r["Custom - Field 2"] = "";
+            interim.push(r);
+          });
+        } else {
+          const o = g[0], cf2 = o["Custom - Field 2"] || "";
+          interim.push({...o, "Custom - Field 2": ""});
+          if (String(cf2).trim()) interim.push({...o, "Custom - Field 1": cf2, "Custom - Field 2": ""});
+        }
+      });
+
+      // inject Shipping row (unchanged)
+      const byOrder = {};
+      interim.forEach(r => {
+        (byOrder[r["Order - Number"]] = byOrder[r["Order - Number"]]||[]).push(r);
+      });
+      let finalData = [];
+      Object.values(byOrder).forEach(g => {
+        g.forEach(r => finalData.push(r));
+        const tpl = g[0];
+        finalData.push({...tpl, "Custom - Field 1": "Shipping (WD)", "Custom - Field 2": ""});
+      });
+      finalData = finalData.map(r => {
+        if (r["Custom - Field 1"] !== "Shipping (WD)") {
+          r.Carrier = ""; r["Carrier Fee"] = ""; r["Tracking Number"] = "";
+        }
+        return r;
+      });
+
+      // synthesize SO NUMBER only if shown (unchanged)
+      finalData.forEach(r => {
+        const doc = r["DOCUMENT NUMBER"] || "";
+        if (showSoNumber.checked) {
+          r["SO NUMBER"] = `Sales Order #${doc}`;
+        } else {
+          delete r["SO NUMBER"];
+        }
+      });
+
+      // Ensure Location reflects final Reference PO everywhere
+      finalData.forEach(r => {
+        if (r["Reference PO"]) {
+          r.Location = deriveLocationFromRef(r["Reference PO"]);
+        }
+      });
+
+      rawData = finalData;
+
+      // reapply manual edits (unchanged)
+      rawData.forEach(r => {
+        const order = r["Order - Number"];
+        if (cellEdits[order]) {
+          Object.entries(cellEdits[order]).forEach(([col, val]) => {
+            r[col] = val;
+          });
+        }
+      });
+
+      ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"]
+        .forEach(id => el(id).disabled = false);
+
+      historyStack = [];
+      renderTable();
+      updateFilterTags();
+    }
+
+    function makeCellsEditableAndHook() {
+      const headers = getActiveHeaders();
+      const cf1Idx = headers.indexOf("Custom - Field 1");
+      const alwaysIdxs = ["Reference PO","Location"].map(h => headers.indexOf(h));
+      const shippingIdxs = ["Carrier","Carrier Fee","Tracking Number"].map(h => headers.indexOf(h));
+
+      report.querySelectorAll("tbody tr").forEach((tr) => {
+        const isShip = tr.children[cf1Idx] && tr.children[cf1Idx].textContent.trim() === "Shipping (WD)";
+        const editableCols = [...alwaysIdxs, ...(isShip ? shippingIdxs : [])].filter(i => i >= 0);
+        editableCols.forEach(colIdx => {
+          const td = tr.children[colIdx];
+          if (!td) return;
+          if (!td.textContent.trim()) {
+            td.contentEditable = "true";
+            td.classList.add("editable");
+          } else {
+            td.contentEditable = "false";
+            td.classList.remove("editable");
+          }
+          td.removeEventListener("blur", td._autoSaveHandler);
+          td._autoSaveHandler = function () {
+            const newVal = td.textContent.trim();
+            const order = tr.children[headers.indexOf("Order - Number")]?.textContent;
+            const colName = headers[colIdx];
+            if (!order) return;
+            pushHistory();
+            cellEdits[order] = cellEdits[order] || {};
+            cellEdits[order][colName] = newVal;
+            rawData.forEach(r => {
+              if (r["Order - Number"] === order) r[colName] = newVal;
+            });
+            currentData.forEach(r => {
+              if (r["Order - Number"] === order) r[colName] = newVal;
+            });
+          };
+          td.addEventListener("blur", td._autoSaveHandler);
+        });
+      });
+    }
+
+    function renderTable() {
+      const headers = getActiveHeaders();
+      let rows = excludeShipping.checked
+        ? rawData.filter(r => r["Custom - Field 1"] !== "Shipping (WD)")
+        : rawData;
+
+      if (filterPLXPAIR.checked) {
+        rows = rows.filter(r => {
+          const sku = (r["Item - SKU"] || "").toString().toUpperCase();
+          return sku.includes("PLX") || sku.includes("PAIR");
+        });
+      }
+
+      currentData = rows;
+      totalOrders.textContent = `Total Orders: ${new Set(rows.map(r => r["Order - Number"])).size}`;
+
+      const counts = {};
+      rawData
+        .filter(r => r["Custom - Field 1"] !== "Shipping (WD)")
+        .forEach(r => {
+          const o = r["Order - Number"];
+          counts[o] = (counts[o] || 0) + 1;
+        });
+
+      const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>`;
+      const tbodyRows = rows.map(r => {
+        return `<tr>${
+          headers.map(h => {
+            let cell = r[h] || "";
+            if (h === "Order - Number") {
+              const order = r["Order - Number"];
+              const cnt = counts[order] || 1;
+              if (cnt > 1) {
+                cell = `${cell}<span class="multi-line-indicator">📦×${cnt}</span>`;
+              }
+            }
+            return `<td>${cell}</td>`;
+          }).join("")
+        }</tr>`;
+      }).join("");
+      report.innerHTML = `<table>${thead}<tbody>${tbodyRows}</tbody></table>`;
+      makeCellsEditableAndHook();
+      updateFilterTags();
+    }
+
+    // popover toggle
+    filterToggle.addEventListener("click", e => {
+      e.stopPropagation();
+      filterPopover.style.display = filterPopover.style.display === "block" ? "none" : "block";
+    });
+    closeFilter.addEventListener("click", () => { filterPopover.style.display = "none"; });
+    document.addEventListener("click", (e) => {
+      if (!filterPopover.contains(e.target) && e.target !== filterToggle) {
+        filterPopover.style.display = "none";
+      }
+    });
+
+    // bindings
+    files.addEventListener("change", async e => {
+      const fArr = [...e.target.files];
+      if (!masterFile && fArr.length) {
+        masterFile = fArr[0];
+        deltaFiles = fArr.slice(1);
+      } else {
+        fArr.forEach(f => {
+          if (masterFile && f.name === masterFile.name && f.size === masterFile.size) return;
+          if (!deltaFiles.find(x => x.name === f.name && x.size === f.size))
+            deltaFiles.push(f);
+        });
+      }
+      await rebuildReport();
+      e.target.value = "";
+    });
+
+    addPoBtn.addEventListener("click", () => {
+      const po = poInput.value.trim();
+      if (!po) {
+        poInput.placeholder = "Enter KEMA PO Number";
+        poInput.style.borderColor = "red";
+        return;
+      }
+      pushHistory();
+      poInput.style.borderColor = "";
+
+      // determine which order numbers are currently visible (after filters)
+      const visibleOrders = new Set(currentData.map(r => r["Order - Number"]).filter(Boolean));
+      if (visibleOrders.size === 0) return;
+
+      // apply to all lines (including shipping) in rawData matching those orders
+      rawData.forEach(r => {
+        if (visibleOrders.has(r["Order - Number"])) {
+          r["PO Number"] = po;
+          cellEdits[r["Order - Number"]] = cellEdits[r["Order - Number"]] || {};
+          cellEdits[r["Order - Number"]]["PO Number"] = po;
+        }
+      });
+
+      renderTable();
+    });
+
+    poInput.addEventListener("input", () => poInput.style.borderColor = "");
+
+    [excludeShipping, showSoNumber, showDocNumber, filterPLXPAIR].forEach(ch =>
+      ch.addEventListener("change", renderTable)
+    );
+
+    // ===== FIXED EXPORT ONLY: builds a strict AOA to avoid invisible/blank columns =====
+    downloadBtn.addEventListener("click", () => {
+      const wb = XLSX.utils.book_new();
+      const headers = getActiveHeaders().map(h => (h ?? "").toString().trim());
+
+      // Guard: ensure all headers are non-empty and unique
+      const emptyIdx = headers.findIndex(h => !h);
+      if (emptyIdx !== -1) {
+        alert(`Export blocked: header #${emptyIdx + 1} is blank. Please review getActiveHeaders().`);
+        return;
+      }
+      const dupeMap = new Map();
+      headers.forEach(h => dupeMap.set(h, (dupeMap.get(h) || 0) + 1));
+      const dupes = [...dupeMap.entries()].filter(([, c]) => c > 1).map(([h]) => h);
+      if (dupes.length) {
+        alert(`Export blocked: duplicate header(s) found -> ${dupes.join(", ")}`);
+        return;
+      }
+
+      const sanitizeCell = (v) => {
+        if (v == null) return "";
+        const s = String(v).replace(/[\u0000-\u001F\u007F]/g, "").trim();
+        return s;
+      };
+
+      const rows = currentData.map(row => headers.map(h => sanitizeCell(row[h])));
+      const aoa = [headers, ...rows];
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+      // Tighten the sheet range to the exact data to avoid phantom cells/columns
+      const range = XLSX.utils.decode_range(ws["!ref"]);
+      range.e.c = headers.length - 1;
+      range.e.r = aoa.length - 1;
+      ws["!ref"] = XLSX.utils.encode_range(range);
+
+      // Optional: uniform column width for readability
+      ws["!cols"] = headers.map(() => ({ wch: 18 }));
+
+      XLSX.utils.book_append_sheet(wb, ws, "Report");
+
+      let fname = filenameInput.value.trim() || "KEMA_Sales_Report";
+      if (!fname.toLowerCase().endsWith(".xlsx")) fname += ".xlsx";
+      XLSX.writeFile(wb, fname);
+    });
+
+    resetBtn.addEventListener("click", () => {
+      masterFile = null;
+      deltaFiles = [];
+      rawData = [];
+      currentData = [];
+      cellEdits = {};
+      historyStack = [];
+      report.innerHTML = "";
+      totalOrders.textContent = "Total Orders: 0";
+      ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"]
+        .forEach(id => el(id).disabled = true);
+      updateFilterTags();
+    });
+  </script>
+</body>
+</html>
