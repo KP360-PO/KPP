@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PO Email Templates</title>
+<style>
+  :root{
+    --bg:#f5f7fb;
+    --card:#ffffff;
+    --ink:#121417;
+    --muted:#5c6470;
+    --ring:#e2e6ee;
+    --accent:#ffe94d;           /* yellow for titles */
+    --accent-ink:#111;
+    --focus:#1a73e8;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+    color:var(--ink); background:var(--bg);
+  }
+
+  .wrap{max-width:1000px; margin:0 auto; padding:24px}
+  header{
+    position:sticky; top:0; z-index:5;
+    background:linear-gradient(180deg, rgba(245,247,251,.97) 70%, rgba(245,247,251,0));
+    backdrop-filter:saturate(120%) blur(4px);
+    padding:16px 24px 10px; margin:-8px -24px 10px;
+    border-bottom:1px solid var(--ring);
+  }
+  .titlebar{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .titlebar h1{margin:0; font-size:20px; letter-spacing:.2px}
+  .srch{
+    display:flex; gap:8px; align-items:center; width:100%; max-width:560px; margin-left:auto;
+  }
+  .srch input{
+    flex:1; padding:12px 14px; border:1px solid var(--ring);
+    background:#fff; border-radius:12px; font-size:16px; outline:none;
+  }
+  .srch input:focus{border-color:#bfd2ff; box-shadow:0 0 0 3px #e8f0ff}
+  .srch .btn{padding:10px 12px; border-radius:12px; border:1px solid var(--ring); background:#fff; cursor:pointer}
+  .toolbar{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
+  .tiny{font-size:12px; color:var(--muted)}
+
+  .list{display:grid; gap:14px; margin-top:14px}
+
+  /* Card as an accordion (<details>) */
+  details.card{
+    background:var(--card); border:1px solid var(--ring); border-radius:14px;
+    box-shadow:0 2px 8px rgba(16,17,20,.05); overflow:hidden;
+  }
+  details.card[open]{box-shadow:0 6px 18px rgba(16,17,20,.08)}
+  summary{list-style:none; cursor:pointer; outline:none}
+  summary::-webkit-details-marker{display:none}
+
+  .summary-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 16px;
+  }
+  .title-pill{
+    display:inline-block; background:var(--accent); color:var(--accent-ink);
+    padding:8px 10px; border-radius:8px; font-weight:800; font-size:14px; text-transform:uppercase; letter-spacing:.3px;
+    max-width:100%;
+  }
+  .title-pill mark{background:#fff6a6}
+  .chev{
+    flex:0 0 auto; width:24px; height:24px; border-radius:999px;
+    display:grid; place-items:center; border:1px solid var(--ring); background:#fff;
+    font-size:14px; transform:rotate(0deg); transition:transform .2s ease;
+  }
+  details[open] .chev{transform:rotate(180deg)}
+
+  /* Animated content reveal */
+  .content{
+    display:grid; grid-template-rows:0fr; transition:grid-template-rows .25s ease;
+    border-top:1px dashed var(--ring);
+  }
+  details[open] .content{grid-template-rows:1fr}
+  .inner{overflow:hidden}
+  .msg{padding:14px 16px 0; white-space:pre-wrap; color:#151922; min-height:0}
+  .msg mark{background:#ffef7a; padding:0 2px}
+  .actions{display:flex; gap:8px; padding:12px 16px 16px}
+  .btn{
+    border:1px solid var(--ring); background:#fff;
+    padding:8px 10px; border-radius:10px; font-weight:600; cursor:pointer;
+  }
+  .btn:hover{box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .result-count{margin-left:auto; color:var(--muted); font-size:13px; align-self:center}
+
+  .empty{margin:34px 0; text-align:center; color:var(--muted)}
+  .footer{margin:30px 0 8px; text-align:center; color:var(--muted); font-size:13px}
+
+  /* Toast for copy confirmation */
+  .toast{
+    position:fixed; right:16px; bottom:16px; padding:10px 12px;
+    background:#111; color:#fff; border-radius:10px; font-size:14px;
+    opacity:0; transform:translateY(8px); transition:all .2s ease; pointer-events:none;
+  }
+  .toast.show{opacity:1; transform:translateY(0)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="titlebar">
+        <h1>Customer Service Templates</h1>
+        <div class="srch">
+          <input id="q" type="search" placeholder="Search titles or message text (e.g., OOS, LTL, refund, PO Box) …" aria-label="Search templates" />
+          <button id="clearBtn" class="btn" title="Clear search">Clear</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button id="expandAll" class="btn">Expand All</button>
+        <button id="collapseAll" class="btn">Collapse All</button>
+        <span id="count" class="result-count tiny"></span>
+      </div>
+    </header>
+
+    <div id="list" class="list" role="list"></div>
+    <p id="emptyState" class="empty" hidden>No templates match your search.</p>
+
+    <p class="footer tiny">Tip: Press <strong>/</strong> or <strong>Ctrl/⌘+K</strong> to focus search. Click a yellow title to reveal the message. The button copies <em>message only</em>.</p>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">Copied</div>
+
+<script>
+/* ---------------- Data ---------------- */
+const TEMPLATES = [
+  { title: "CANCEL OUT OF STOCK", hints: ["cancel","out of stock","OOS","refund","inventory"], body:
+`We regret to inform you the part is no longer available. Your order has been canceled and a full refund has been issued, which should appear in your account within 3–5 business days.
+Apologies for the inconvenience, and thank you for your understanding.
+Sincerely,` },
+  { title: "MULTIPLE SHIPMENTS NOTIF", hints: ["multiple shipments","split order","tracking forthcoming","notification"], body:
+`Your order is being fulfilled from multiple distribution centers, so your items will arrive in separate shipments. We will share the tracking numbers with you as soon as they become available.
+
+If you have any questions, please don’t hesitate to reach out.
+
+Sincerely,` },
+  { title: "MULTIPLE SHIPMENTS SHIPPED", hints: ["multiple shipments","tracking numbers","split shipment","fulfilled"], body:
+`Your order was fulfilled by different distribution centers and will arrive in separate shipments. You can track them using the following numbers: 
+[Insert Tracking Numbers]
+If you have any questions, please feel free to contact us.
+
+Sincerely,` },
+  { title: "DUPLICATE QUANTITY", hints: ["duplicate","quantity check","confirmation","verify order"], body:
+`We noticed that your order includes a duplicate quantity and would like to confirm if this was intentional. If it was placed in error, please let us know so we can make the necessary adjustment on our end.
+
+We look forward to your confirmation.
+
+Sincerely,` },
+  { title: "DUPLICATE ORDER/QTY REFUNDED", hints: ["duplicate","refund","only one shipped","adjustment"], body:
+`We wanted to let you know that only 1 item from your order was shipped instead of 2. The duplicate item has been refunded, and the amount should appear in your account within 3–5 business days.
+If the duplicate was intentional, we kindly ask that you re-purchase from the same listing.
+Thank you for shopping with us, and we appreciate your understanding.
+Sincerely,` },
+  { title: "RS Template shipped", hints: ["replacement shipped","tracking","reshipment","RS"], body:
+`We’re pleased to inform you that a replacement has been shipped for your order.
+You can monitor its delivery status using the tracking number below:
+[Insert Tracking Number]
+Thank you for your patience, and please let us know if you have any questions.
+
+Sincerely,` },
+  { title: "LTL Shipment – Canceled", hints: ["LTL","freight","dimensional","cannot ship","refund","canceled"], body:
+`We regret to inform you that this item requires special handling, and due to dimensional issues, we cannot ship it. Your order has been canceled and a full refund has been issued, which will reflect in 3–5 business days.
+
+We apologize for the inconvenience and appreciate your understanding.
+
+Sincerely,` },
+  { title: "JWL to avoid metrics hit", hints: ["wrong item","metrics","ignore first tracking","replacement tracking"], body:
+`Due to a system error, an incorrect item was sent. Please disregard the first tracking number. The correct item has been shipped, and we’ll provide the new tracking details shortly.
+
+No return is needed—you may keep or dispose of the incorrect item. We apologize for the inconvenience and appreciate your understanding.
+
+Sincerely,` },
+  { title: "After shipping correct item", hints: ["correct item shipped","tracking","keep incorrect item","no return"], body:
+`We’re pleased to inform you that the correct item has been shipped. You can monitor its delivery using the tracking number below:
+[Insert Tracking Number]
+There is no need to return the incorrect item, you may keep or dispose of it at your convenience.
+Sincerely,` },
+  { title: "JWL for OOS", hints: ["wrong item","OOS","cancel & refund","no return needed"], body:
+`We’re sorry to inform you, but due to a system error, wrong item was sent. We’ve canceled your order and issued a full refund, which should appear in 3–5 business days.
+No return is needed, you may keep or dispose the item. We apologize for the inconvenience and appreciate your understanding.
+ 
+Sincerely,` },
+  { title: "Listing error cancelation", hints: ["listing error","cancel","refund","repurchase"], body:
+`Your order has been canceled due to an incorrect listing description. A full refund has been issued and will reflect in your account within 3–5 business days.
+
+If you’d like to proceed, please re-purchase from the same listing once updated. We apologize for the inconvenience and appreciate your understanding.
+
+Sincerely,` },
+  { title: "FRAUD", hints: ["fraud","security","cancel","helpdesk email","reorder"], body:
+`Your order has been canceled due to suspected fraudulent activity.
+If this was done in error, please place your order again and contact us at helpdesk@karparts360.com for assistance.
+
+Sincerely,` },
+  { title: "DS Wrong Address 100RYAN WH", hints: ["wrong address","reshipment","system error","tracking pending","DS"], body:
+`We apologize for the inconvenience. Due to a system error, your order was shipped to the wrong address. A re-shipment is on the way, and we’ll share the new tracking number once available.
+
+Sincerely,` },
+  { title: "CARB", hints: ["California","CARB restriction","cannot ship","refund","emissions"], body:
+`We regret to inform you that we are unable to ship this part to California due to CARB restrictions. Your order has been canceled, and a full refund has been issued. It should reflect in your account within 3–5 business days.
+
+We apologize for the inconvenience and appreciate your understanding.
+
+Sincerely,` },
+  { title: "PO BOX ADDRESS – ADDRESS REQUEST", hints: ["PO Box","address needed","alternate address","ship-to"], body:
+`We regret to inform you that we are unable to ship to PO boxes. Please provide an alternate residential or business address so we can proceed with shipping your order.
+
+Sincerely,` },
+  { title: "PO BOX ADDRESS – CANCELATION", hints: ["PO Box","cancel","refund","repurchase"], body:
+`We regret to inform you that we cannot ship to PO boxes. Your order has been canceled, and a full refund has been issued, which should reflect in your account within 3–5 business days.
+If you still wish to proceed, please place a new order from the same listing using a residential or business address.
+
+Sincerely,` },
+  { title: "PARTIAL OOS", hints: ["partial shipment","out of stock","OOS","partial refund"], body:
+`We regret to inform you that only [Insert Item Name] was shipped, as it was the last one in stock. A partial refund has been issued and should reflect in your account within 3–5 business days.
+
+We apologize for the inconvenience and appreciate your understanding.
+
+Sincerely,` },
+  { title: "PHONE NUMBER ISSUE – LTL", hints: ["phone number","LTL","delivery scheduling","contact needed"], body:
+`We’re reaching out because the phone number you provided (listed below) appears to be invalid, and our shipping partner was unable to contact you. Could you please verify your correct phone number so we can proceed with shipping your order?
+
+We look forward to your reply.
+
+Sincerely,` },
+  { title: "RETURN PACKAGE", hints: ["returned to sender","delivery failed","confirm address","reschedule"], body:
+`We regret to inform you that your package was returned to our warehouse due to a failed delivery attempt. Since the part is still with us, please let us know if you would like to reschedule delivery and kindly confirm your complete address.
+
+We look forward to your response.
+
+Sincerely,` },
+  { title: "LACK OF INFO", hints: ["missing info","LTL","phone required","cancel & refund"], body:
+`We were unable to ship your order due to missing required information. As this is a large item requiring special handling, LTL shipments need a valid phone number for delivery scheduling. Your order has been canceled and a full refund issued, which should reflect in 3–5 business days.
+
+To proceed, please place a new order with an active phone number. We apologize for the inconvenience and appreciate your understanding.
+
+Sincerely,` },
+  { title: "MEYER LTL", hints: ["Meyer Logistics","LTL","tracking","delivery scheduling","authorize drop-off"], body:
+`You may track your shipment using the details below:
+
+Tracking Number: [Insert Number]
+[Insert Tracking Link]
+
+For delivery assistance, you may also contact Meyer Logistics directly:
+Route Managers: 866-463-0528
+Customer Service: 800-999-0356
+(Use your tracking number, order number, or PO number as reference.)
+
+If preferred, you can authorize the carrier to leave the package at your front door in case they cannot reach you. Please also keep your phone line open, as the carrier will call to schedule a delivery appointment and again about an hour before delivery.
+
+Sincerely,` }
+];
+
+/* -------------- Helpers -------------- */
+const $ = s => document.querySelector(s);
+const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function highlight(text, tokens){
+  if(!tokens.length) return text;
+  const rx = new RegExp("(" + tokens.map(escapeRegExp).join("|") + ")", "gi");
+  return text.replace(rx, "<mark>$1</mark>");
+}
+function toast(msg="Copied"){
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 900);
+}
+
+/* -------------- Render --------------- */
+const list = $("#list");
+const emptyState = $("#emptyState");
+const q = $("#q");
+const clearBtn = $("#clearBtn");
+const expandAllBtn = $("#expandAll");
+const collapseAllBtn = $("#collapseAll");
+const count = $("#count");
+
+let tokens = [];
+
+function render(){
+  list.innerHTML = "";
+  let shown = 0;
+
+  TEMPLATES.forEach(t => {
+    const haystack = (t.title + " " + t.body + " " + t.hints.join(" ")).toLowerCase();
+    const keep = tokens.every(tok => haystack.includes(tok.toLowerCase()));
+    if(!keep) return;
+
+    shown++;
+
+    const details = document.createElement("details");
+    details.className = "card";
+
+    const summary = document.createElement("summary");
+    summary.innerHTML = `
+      <div class="summary-row">
+        <span class="title-pill">${highlight(t.title, tokens)}</span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </div>
+    `;
+    details.appendChild(summary);
+
+    const content = document.createElement("div");
+    content.className = "content";
+    content.innerHTML = `
+      <div class="inner">
+        <div class="msg">${highlight(t.body, tokens)}</div>
+        <div class="actions">
+          <button class="btn copy">📋 Copy Message</button>
+        </div>
+      </div>
+    `;
+    details.appendChild(content);
+
+    content.querySelector(".copy").addEventListener("click", () => {
+      const text = content.querySelector(".msg").textContent.trim();
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(()=>toast("Message copied"));
+      }else{
+        // Fallback
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try{ document.execCommand("copy"); toast("Message copied"); } catch(e){}
+        ta.remove();
+      }
+    });
+
+    list.appendChild(details);
+  });
+
+  emptyState.hidden = shown !== 0;
+  count.textContent = shown ? `${shown} result${shown>1?"s":""}` : "";
+}
+
+function setSearch(v){
+  const cleaned = v.trim();
+  tokens = cleaned ? cleaned.split(/\s+/) : [];
+  q.value = v;
+  render();
+}
+
+/* -------------- Events --------------- */
+q.addEventListener("input", e => setSearch(e.target.value));
+clearBtn.addEventListener("click", ()=> setSearch(""));
+document.addEventListener("keydown", e=>{
+  // Focus search with "/" or Ctrl/Cmd+K; clear with Esc
+  if((e.key === "/" && document.activeElement !== q) ||
+     (e.key.toLowerCase()==="k" && (e.ctrlKey || e.metaKey))){
+    e.preventDefault(); q.focus(); q.select();
+  }
+  if(e.key === "Escape"){ setSearch(""); q.blur(); }
+});
+
+expandAllBtn.addEventListener("click", ()=>{
+  document.querySelectorAll("details.card").forEach(d => d.open = true);
+});
+collapseAllBtn.addEventListener("click", ()=>{
+  document.querySelectorAll("details.card").forEach(d => d.open = false);
+});
+
+/* -------------- Init ----------------- */
+render();
+</script>
+</body>
+</html>
