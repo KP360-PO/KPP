@@ -223,23 +223,22 @@
       for (let i = 0; i < deltaFiles.length; i++) {
         const rows = (await parseFile(deltaFiles[i])).map(normalizeRow);
 
-        // i === 1 block (unchanged): populate Reference PO from PO Number if missing
-        if (i === 1) {
-          rows.forEach(r => {
-            if (!masterOrders.has(r["Order - Number"])) return;
-            const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
-            if ((!m["Reference PO"]||m["Reference PO"].trim()==="") && r["PO Number"]) {
-              m["Reference PO"] = r["PO Number"];
-              // Update Location since Reference PO is now known
-              m.Location = deriveLocationFromRef(m["Reference PO"]);
-            }
-          });
-          continue;
-        }
+        // ALWAYS: PO Number (from other sheets) -> Reference PO (HTML)
+        rows.forEach(r => {
+          if (!masterOrders.has(r["Order - Number"])) return;
+          const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
+          const poFromOther = (r["PO Number"] || "").toString().trim();
+          if ((!m["Reference PO"] || m["Reference PO"].toString().trim() === "") && poFromOther) {
+            m["Reference PO"] = poFromOther;
+            // Update Location since Reference PO is now known
+            m.Location = deriveLocationFromRef(m["Reference PO"]);
+          }
+        });
 
-        // Merge other columns as before
+        // Merge other columns EXCLUDING "PO Number"
         const mergeCols = [
-          ...baseHeaders.filter(h => h !== "Order - Number"),
+          ...baseHeaders
+            .filter(h => h !== "Order - Number" && h !== "PO Number"),
           "SO NUMBER", "DOCUMENT NUMBER"
         ];
         rows.forEach(r => {
@@ -312,6 +311,10 @@
           r.Location = deriveLocationFromRef(r["Reference PO"]);
         }
       });
+
+      // 3) NEVER import PO Number; make it manual-only.
+      // Blank all PO Number cells before reapplying saved manual edits.
+      finalData.forEach(r => { r["PO Number"] = ""; });
 
       rawData = finalData;
 
