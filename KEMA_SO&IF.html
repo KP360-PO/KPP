@@ -10,7 +10,8 @@
     header{display:flex;justify-content:space-between;align-items:center;background:#005b96;color:#fff;padding:.4rem;}
     .title-block{display:flex;flex-direction:column;}
     header h1{font-size:1.5rem;margin-bottom:2px;}
-    header small{font-size:0.9em;font-style:italic;color:#ddd;}.author{font-size:0.85rem;font-style:italic;}
+    header small{font-size:0.9em;font-style:italic;color:#ddd;}
+    .author{font-size:0.85rem;font-style:italic;}
     .controls{ display:flex; flex-direction:column; background:#fff; border-bottom:1px solid #ddd; padding:.75rem 1rem; gap:.5rem; position:relative; }
     .controls-row{ display:flex; align-items:center; justify-content:space-between; }
     .left-group, .right-group{ display:flex; align-items:center; gap:1rem; }
@@ -54,9 +55,7 @@
         <input type="text" id="poInput" placeholder="KEMA PO Number">
         <button id="addPoBtn">Add</button>
         <div class="filter-group">
-          <button type="button" class="filter-btn" id="filterToggle">
-            Filters ▾
-          </button>
+          <button type="button" class="filter-btn" id="filterToggle">Filters ▾</button>
           <div class="filter-tags" id="activeFilters"></div>
           <div class="filter-popover" id="filterPopover">
             <div style="display:flex; align-items:center; margin-bottom:6px;">
@@ -88,16 +87,18 @@
   <script>
     const baseHeaders = [ "Date - Order Date", "Order - Number", "Item - SKU", "Item - Qty", "Custom - Field 1", "Custom - Field 2", "Custom - Field 3", "Ship To - Name", "PO Number", "Reference PO", "Carrier", "Carrier Fee", "Tracking Number", "Location" ];
 
-    // Removed "Ship From" → "Location" so Location no longer comes from Ship From
+    // --- SO-only Document Number
     const synonyms = {
-      "Order #":         "Order - Number",
-      "Order Number":    "Order - Number",
-      "Document #":      "DOCUMENT NUMBER",
-      "Document Number": "DOCUMENT NUMBER",
-      "Tracking #":      "Tracking Number"
+      "Order #":      "Order - Number",
+      "Order Number": "Order - Number",
+      "Tracking #":   "Tracking Number"
     };
+    function extractSO(val) {
+      const s = String(val || "").toUpperCase().trim();
+      const m = s.match(/^SO-?\d+/);
+      return m ? m[0] : "";
+    }
 
-    // Derive Location solely from Reference PO
     function deriveLocationFromRef(ref) {
       const s = String(ref || "").toUpperCase();
       if (s.includes("NJ")) return "New Jersey Distribution Warehouse";
@@ -127,17 +128,16 @@
 
     function sanitize(s){ return s.replace(/[®\\]/g, ""); }
 
-    let cellEdits = {};
-    let masterFile = null,
-        deltaFiles = [],
-        rawData = [],
-        currentData = [],
-        historyStack = [];
+    // --- Persist edits (incl. refresh) ---
+    const STORAGE_KEY = "kema_cellEdits_v2";
+    let cellEdits = {}; // { [order]: { general:{}, shipping:{} } }
+    function loadEdits() { try { const s = localStorage.getItem(STORAGE_KEY); if (s) cellEdits = JSON.parse(s) || {}; } catch(e) {} }
+    function persistEdits() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cellEdits)); } catch(e) {} }
+    function ensureEditBucket(order) { cellEdits[order] = cellEdits[order] || { general: {}, shipping: {} }; return cellEdits[order]; }
+    loadEdits();
 
-    function pushHistory() {
-      historyStack.push(JSON.parse(JSON.stringify(currentData)));
-      resetBtn.disabled = false;
-    }
+    let masterFile = null, deltaFiles = [], rawData = [], currentData = [], historyStack = [];
+    function pushHistory() { historyStack.push(JSON.parse(JSON.stringify(currentData))); resetBtn.disabled = true ? false : false; resetBtn.disabled = false; }
 
     function updateFilterTags() {
       activeFilters.innerHTML = "";
@@ -146,27 +146,16 @@
       if (showSoNumber.checked) tags.push("SO #");
       if (showDocNumber.checked) tags.push("Doc #");
       if (filterPLXPAIR.checked) tags.push("PLX/PAIR");
-      tags.forEach(t => {
-        const span = document.createElement("span");
-        span.className = "tag";
-        span.textContent = t;
-        activeFilters.appendChild(span);
-      });
+      tags.forEach(t => { const span = document.createElement("span"); span.className = "tag"; span.textContent = t; activeFilters.appendChild(span); });
     }
 
     async function parseFile(file) {
       if (/\.csv$/i.test(file.name)) {
-        return new Promise(res => Papa.parse(file, {
-          header: true, skipEmptyLines: true,
-          complete: ({data}) => res(data)
-        }));
+        return new Promise(res => Papa.parse(file, { header: true, skipEmptyLines: true, complete: ({data}) => res(data) }));
       } else {
         return new Promise(res => {
           const fr = new FileReader();
-          fr.onload = e => {
-            const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
-            res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:"" }));
-          };
+          fr.onload = e => { const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' }); res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:"" })); };
           fr.readAsArrayBuffer(file);
         });
       }
@@ -176,42 +165,34 @@
       const r = {...row};
       if (r.Service) r.Carrier = r.Service;
 
-      // Apply synonyms
       Object.entries(synonyms).forEach(([from,to]) => {
         if (r[from]!=null && (!r[to]||String(r[to]).trim()==="")) r[to] = r[from];
       });
 
-      // Date normalize
       if (r["Date - Order Date"]) {
         const d = new Date(r["Date - Order Date"]);
         if (!isNaN(d)) r["Date - Order Date"] = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
       }
 
-      // Clean strings
-      Object.keys(r).forEach(k => {
-        if (typeof r[k] === "string") r[k] = sanitize(r[k]);
-      });
+      Object.keys(r).forEach(k => { if (typeof r[k] === "string") r[k] = sanitize(r[k]); });
 
-      // LOCATION: derive ONLY from Reference PO
-      if (r["Reference PO"]) {
-        r.Location = deriveLocationFromRef(r["Reference PO"]);
-      }
+      const docCandidate = r["DOCUMENT NUMBER"] ?? r["Document Number"] ?? r["Document #"] ?? "";
+      r["DOCUMENT NUMBER"] = extractSO(docCandidate);
 
+      if (r["Reference PO"]) r.Location = deriveLocationFromRef(r["Reference PO"]);
       return r;
     }
 
     function getActiveHeaders() {
       const h = [...baseHeaders];
-      if (showSoNumber.checked) {
-        const idx = h.indexOf("Order - Number");
-        h.splice(idx + 1, 0, "SO NUMBER");
-      }
-      if (showDocNumber.checked) {
-        let idx = h.indexOf("SO NUMBER");
-        if (idx === -1) idx = h.indexOf("Order - Number");
-        h.splice(idx + 1, 0, "DOCUMENT NUMBER");
-      }
+      if (showSoNumber.checked) { const idx = h.indexOf("Order - Number"); h.splice(idx + 1, 0, "SO NUMBER"); }
+      if (showDocNumber.checked) { let idx = h.indexOf("SO NUMBER"); if (idx === -1) idx = h.indexOf("Order - Number"); h.splice(idx + 1, 0, "DOCUMENT NUMBER"); }
       return h;
+    }
+
+    function applyBucketsToRow(r, bucket) {
+      Object.entries(bucket.general).forEach(([k,v]) => { r[k] = v; });
+      if (r["Custom - Field 1"] === "Shipping (WD)") Object.entries(bucket.shipping).forEach(([k,v]) => { r[k] = v; });
     }
 
     async function rebuildReport() {
@@ -223,44 +204,33 @@
       for (let i = 0; i < deltaFiles.length; i++) {
         const rows = (await parseFile(deltaFiles[i])).map(normalizeRow);
 
-        // ALWAYS: PO Number (from other sheets) -> Reference PO (HTML)
         rows.forEach(r => {
           if (!masterOrders.has(r["Order - Number"])) return;
           const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
           const poFromOther = (r["PO Number"] || "").toString().trim();
           if ((!m["Reference PO"] || m["Reference PO"].toString().trim() === "") && poFromOther) {
             m["Reference PO"] = poFromOther;
-            // Update Location since Reference PO is now known
             m.Location = deriveLocationFromRef(m["Reference PO"]);
           }
         });
 
-        // Merge other columns EXCLUDING "PO Number"
-        const mergeCols = [
-          ...baseHeaders
-            .filter(h => h !== "Order - Number" && h !== "PO Number"),
-          "SO NUMBER", "DOCUMENT NUMBER"
-        ];
+        const mergeCols = [...baseHeaders.filter(h => h !== "Order - Number" && h !== "PO Number"), "SO NUMBER", "DOCUMENT NUMBER"];
         rows.forEach(r => {
           if (!masterOrders.has(r["Order - Number"])) return;
           const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
           mergeCols.forEach(col => {
             if ((!m[col]||String(m[col]).trim()==="") && r[col]) {
-              m[col] = r[col];
+              if (col === "DOCUMENT NUMBER") {
+                const so = extractSO(r[col]); if (so) m[col] = so;
+              } else { m[col] = r[col]; }
             }
           });
-          // If Reference PO got filled by this merge, update Location
-          if (m["Reference PO"]) {
-            m.Location = deriveLocationFromRef(m["Reference PO"]);
-          }
+          if (m["Reference PO"]) m.Location = deriveLocationFromRef(m["Reference PO"]);
         });
       }
 
-      // split Custom - Field 2 logic (unchanged)
       const grouped = {};
-      data.forEach(r => {
-        (grouped[r["Order - Number"]] = grouped[r["Order - Number"]]||[]).push(r);
-      });
+      data.forEach(r => { (grouped[r["Order - Number"]] = grouped[r["Order - Number"]]||[]).push(r); });
       let interim = [];
       Object.values(grouped).forEach(g => {
         if (g.length > 1) {
@@ -277,11 +247,8 @@
         }
       });
 
-      // inject Shipping row (unchanged)
       const byOrder = {};
-      interim.forEach(r => {
-        (byOrder[r["Order - Number"]] = byOrder[r["Order - Number"]]||[]).push(r);
-      });
+      interim.forEach(r => { (byOrder[r["Order - Number"]] = byOrder[r["Order - Number"]]||[]).push(r); });
       let finalData = [];
       Object.values(byOrder).forEach(g => {
         g.forEach(r => finalData.push(r));
@@ -289,47 +256,30 @@
         finalData.push({...tpl, "Custom - Field 1": "Shipping (WD)", "Custom - Field 2": ""});
       });
       finalData = finalData.map(r => {
-        if (r["Custom - Field 1"] !== "Shipping (WD)") {
-          r.Carrier = ""; r["Carrier Fee"] = ""; r["Tracking Number"] = "";
-        }
+        if (r["Custom - Field 1"] !== "Shipping (WD)") { r.Carrier = ""; r["Carrier Fee"] = ""; r["Tracking Number"] = ""; }
         return r;
       });
 
-      // synthesize SO NUMBER only if shown (unchanged)
       finalData.forEach(r => {
         const doc = r["DOCUMENT NUMBER"] || "";
-        if (showSoNumber.checked) {
-          r["SO NUMBER"] = `Sales Order #${doc}`;
-        } else {
-          delete r["SO NUMBER"];
-        }
+        if (showSoNumber.checked && doc) r["SO NUMBER"] = `Sales Order #${doc}`;
+        else delete r["SO NUMBER"];
       });
 
-      // Ensure Location reflects final Reference PO everywhere
-      finalData.forEach(r => {
-        if (r["Reference PO"]) {
-          r.Location = deriveLocationFromRef(r["Reference PO"]);
-        }
-      });
+      finalData.forEach(r => { if (r["Reference PO"]) r.Location = deriveLocationFromRef(r["Reference PO"]); });
 
-      // 3) NEVER import PO Number; make it manual-only.
-      // Blank all PO Number cells before reapplying saved manual edits.
       finalData.forEach(r => { r["PO Number"] = ""; });
 
       rawData = finalData;
 
-      // reapply manual edits (unchanged)
       rawData.forEach(r => {
         const order = r["Order - Number"];
-        if (cellEdits[order]) {
-          Object.entries(cellEdits[order]).forEach(([col, val]) => {
-            r[col] = val;
-          });
-        }
+        const ce = cellEdits[order];
+        if (!ce) return;
+        applyBucketsToRow(r, ce);
       });
 
-      ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"]
-        .forEach(id => el(id).disabled = false);
+      ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"].forEach(id => el(id).disabled = false);
 
       historyStack = [];
       renderTable();
@@ -339,48 +289,64 @@
     function makeCellsEditableAndHook() {
       const headers = getActiveHeaders();
       const cf1Idx = headers.indexOf("Custom - Field 1");
-      const alwaysIdxs = ["Reference PO","Location"].map(h => headers.indexOf(h));
-      const shippingIdxs = ["Carrier","Carrier Fee","Tracking Number"].map(h => headers.indexOf(h));
+      const baseEditableIdxs = ["Reference PO","Location","PO Number"].map(h => headers.indexOf(h)).filter(i => i >= 0);
+      const shippingIdxs = ["Carrier","Carrier Fee","Tracking Number"].map(h => headers.indexOf(h)).filter(i => i >= 0);
 
       report.querySelectorAll("tbody tr").forEach((tr) => {
-        const isShip = tr.children[cf1Idx] && tr.children[cf1Idx].textContent.trim() === "Shipping (WD)";
-        const editableCols = [...alwaysIdxs, ...(isShip ? shippingIdxs : [])].filter(i => i >= 0);
+        // ✅ Use dataset instead of reading textContent (avoids 📦×N noise)
+        const order = tr.dataset.order || "";
+        const isShipRow = tr.dataset.isshipping === "1";
+        const editableCols = [...baseEditableIdxs, ...(isShipRow ? shippingIdxs : [])];
+
         editableCols.forEach(colIdx => {
           const td = tr.children[colIdx];
           if (!td) return;
-          if (!td.textContent.trim()) {
-            td.contentEditable = "true";
-            td.classList.add("editable");
-          } else {
-            td.contentEditable = "false";
-            td.classList.remove("editable");
-          }
-          td.removeEventListener("blur", td._autoSaveHandler);
-          td._autoSaveHandler = function () {
+
+          td.contentEditable = "true";
+          td.classList.add("editable");
+
+          td.removeEventListener("input", td._onInputHandler);
+          td.removeEventListener("blur", td._onBlurHandler);
+
+          td._onInputHandler = function () {
             const newVal = td.textContent.trim();
-            const order = tr.children[headers.indexOf("Order - Number")]?.textContent;
             const colName = headers[colIdx];
             if (!order) return;
-            pushHistory();
-            cellEdits[order] = cellEdits[order] || {};
-            cellEdits[order][colName] = newVal;
-            rawData.forEach(r => {
-              if (r["Order - Number"] === order) r[colName] = newVal;
-            });
-            currentData.forEach(r => {
-              if (r["Order - Number"] === order) r[colName] = newVal;
-            });
+
+            const bucket = ensureEditBucket(order);
+            const toShipping = (isShipRow || ["Carrier","Carrier Fee","Tracking Number"].includes(colName));
+            if (toShipping) {
+              bucket.shipping[colName] = newVal;
+            } else {
+              bucket.general[colName] = newVal;
+              if (colName === "Reference PO" && !("Location" in bucket.general)) {
+                bucket.general["Location"] = deriveLocationFromRef(newVal);
+                const locIdx = headers.indexOf("Location");
+                if (locIdx >= 0 && tr.children[locIdx]) tr.children[locIdx].textContent = bucket.general["Location"];
+              }
+            }
+
+            rawData.forEach(r => { if (r["Order - Number"] === order) applyBucketsToRow(r, bucket); });
+            currentData.forEach(r => { if (r["Order - Number"] === order) applyBucketsToRow(r, bucket); });
+
+            persistEdits();
           };
-          td.addEventListener("blur", td._autoSaveHandler);
+
+          td._onBlurHandler = function () {
+            pushHistory();
+            // re-render not strictly required, but keeps rows in sync when an edit affects all lines of the order
+            renderTable();
+          };
+
+          td.addEventListener("input", td._onInputHandler);
+          td.addEventListener("blur", td._onBlurHandler);
         });
       });
     }
 
     function renderTable() {
       const headers = getActiveHeaders();
-      let rows = excludeShipping.checked
-        ? rawData.filter(r => r["Custom - Field 1"] !== "Shipping (WD)")
-        : rawData;
+      let rows = excludeShipping.checked ? rawData.filter(r => r["Custom - Field 1"] !== "Shipping (WD)") : rawData;
 
       if (filterPLXPAIR.checked) {
         rows = rows.filter(r => {
@@ -393,134 +359,100 @@
       totalOrders.textContent = `Total Orders: ${new Set(rows.map(r => r["Order - Number"])).size}`;
 
       const counts = {};
-      rawData
-        .filter(r => r["Custom - Field 1"] !== "Shipping (WD)")
-        .forEach(r => {
-          const o = r["Order - Number"];
-          counts[o] = (counts[o] || 0) + 1;
-        });
+      rawData.filter(r => r["Custom - Field 1"] !== "Shipping (WD)").forEach(r => {
+        const o = r["Order - Number"]; counts[o] = (counts[o] || 0) + 1;
+      });
 
       const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>`;
       const tbodyRows = rows.map(r => {
-        return `<tr>${
+        const order = r["Order - Number"] || "";
+        const cnt = counts[order] || 1;
+        const isShip = r["Custom - Field 1"] === "Shipping (WD)";
+        return `<tr data-order="${order.replace(/"/g,'&quot;')}" data-isshipping="${isShip ? "1" : "0"}">${
           headers.map(h => {
             let cell = r[h] || "";
             if (h === "Order - Number") {
-              const order = r["Order - Number"];
-              const cnt = counts[order] || 1;
-              if (cnt > 1) {
-                cell = `${cell}<span class="multi-line-indicator">📦×${cnt}</span>`;
-              }
+              if (cnt > 1) cell = `${cell}<span class="multi-line-indicator">📦×${cnt}</span>`;
             }
             return `<td>${cell}</td>`;
           }).join("")
         }</tr>`;
       }).join("");
+
       report.innerHTML = `<table>${thead}<tbody>${tbodyRows}</tbody></table>`;
       makeCellsEditableAndHook();
       updateFilterTags();
     }
 
-    // popover toggle
-    filterToggle.addEventListener("click", e => {
-      e.stopPropagation();
-      filterPopover.style.display = filterPopover.style.display === "block" ? "none" : "block";
-    });
+    // Popover
+    filterToggle.addEventListener("click", e => { e.stopPropagation(); filterPopover.style.display = filterPopover.style.display === "block" ? "none" : "block"; });
     closeFilter.addEventListener("click", () => { filterPopover.style.display = "none"; });
-    document.addEventListener("click", (e) => {
-      if (!filterPopover.contains(e.target) && e.target !== filterToggle) {
-        filterPopover.style.display = "none";
-      }
-    });
+    document.addEventListener("click", (e) => { if (!filterPopover.contains(e.target) && e.target !== filterToggle) filterPopover.style.display = "none"; });
 
-    // bindings
+    // File binding
     files.addEventListener("change", async e => {
       const fArr = [...e.target.files];
-      if (!masterFile && fArr.length) {
-        masterFile = fArr[0];
-        deltaFiles = fArr.slice(1);
-      } else {
+      if (!masterFile && fArr.length) { masterFile = fArr[0]; deltaFiles = fArr.slice(1); }
+      else {
         fArr.forEach(f => {
           if (masterFile && f.name === masterFile.name && f.size === masterFile.size) return;
-          if (!deltaFiles.find(x => x.name === f.name && x.size === f.size))
-            deltaFiles.push(f);
+          if (!deltaFiles.find(x => x.name === f.name && x.size === f.size)) deltaFiles.push(f);
         });
       }
       await rebuildReport();
       e.target.value = "";
     });
 
+    // Add PO → persist
     addPoBtn.addEventListener("click", () => {
       const po = poInput.value.trim();
-      if (!po) {
-        poInput.placeholder = "Enter KEMA PO Number";
-        poInput.style.borderColor = "red";
-        return;
-      }
+      if (!po) { poInput.placeholder = "Enter KEMA PO Number"; poInput.style.borderColor = "red"; return; }
       pushHistory();
       poInput.style.borderColor = "";
 
-      // determine which order numbers are currently visible (after filters)
       const visibleOrders = new Set(currentData.map(r => r["Order - Number"]).filter(Boolean));
       if (visibleOrders.size === 0) return;
 
-      // apply to all lines (including shipping) in rawData matching those orders
       rawData.forEach(r => {
-        if (visibleOrders.has(r["Order - Number"])) {
-          r["PO Number"] = po;
-          cellEdits[r["Order - Number"]] = cellEdits[r["Order - Number"]] || {};
-          cellEdits[r["Order - Number"]]["PO Number"] = po;
-        }
+        if (!visibleOrders.has(r["Order - Number"])) return;
+        const bucket = ensureEditBucket(r["Order - Number"]);
+        bucket.general["PO Number"] = po;
+        applyBucketsToRow(r, bucket);
       });
-
+      currentData.forEach(r => {
+        if (!visibleOrders.has(r["Order - Number"])) return;
+        const bucket = ensureEditBucket(r["Order - Number"]);
+        applyBucketsToRow(r, bucket);
+      });
+      persistEdits();
       renderTable();
     });
 
     poInput.addEventListener("input", () => poInput.style.borderColor = "");
 
-    [excludeShipping, showSoNumber, showDocNumber, filterPLXPAIR].forEach(ch =>
-      ch.addEventListener("change", renderTable)
-    );
+    [excludeShipping, showSoNumber, showDocNumber, filterPLXPAIR].forEach(ch => ch.addEventListener("change", renderTable));
 
-    // ===== FIXED EXPORT ONLY: builds a strict AOA to avoid invisible/blank columns =====
+    // Export
     downloadBtn.addEventListener("click", () => {
+      // ensure last keystroke is saved
+      if (document.activeElement && document.activeElement.isContentEditable) document.activeElement.blur();
+
       const wb = XLSX.utils.book_new();
       const headers = getActiveHeaders().map(h => (h ?? "").toString().trim());
 
-      // Guard: ensure all headers are non-empty and unique
       const emptyIdx = headers.findIndex(h => !h);
-      if (emptyIdx !== -1) {
-        alert(`Export blocked: header #${emptyIdx + 1} is blank. Please review getActiveHeaders().`);
-        return;
-      }
-      const dupeMap = new Map();
-      headers.forEach(h => dupeMap.set(h, (dupeMap.get(h) || 0) + 1));
+      if (emptyIdx !== -1) { alert(`Export blocked: header #${emptyIdx + 1} is blank. Please review getActiveHeaders().`); return; }
+      const dupeMap = new Map(); headers.forEach(h => dupeMap.set(h, (dupeMap.get(h) || 0) + 1));
       const dupes = [...dupeMap.entries()].filter(([, c]) => c > 1).map(([h]) => h);
-      if (dupes.length) {
-        alert(`Export blocked: duplicate header(s) found -> ${dupes.join(", ")}`);
-        return;
-      }
+      if (dupes.length) { alert(`Export blocked: duplicate header(s) found -> ${dupes.join(", ")}`); return; }
 
-      const sanitizeCell = (v) => {
-        if (v == null) return "";
-        const s = String(v).replace(/[\u0000-\u001F\u007F]/g, "").trim();
-        return s;
-      };
-
+      const sanitizeCell = (v) => v == null ? "" : String(v).replace(/[\u0000-\u001F\u007F]/g, "").trim();
       const rows = currentData.map(row => headers.map(h => sanitizeCell(row[h])));
       const aoa = [headers, ...rows];
-
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-      // Tighten the sheet range to the exact data to avoid phantom cells/columns
       const range = XLSX.utils.decode_range(ws["!ref"]);
-      range.e.c = headers.length - 1;
-      range.e.r = aoa.length - 1;
-      ws["!ref"] = XLSX.utils.encode_range(range);
-
-      // Optional: uniform column width for readability
+      range.e.c = headers.length - 1; range.e.r = aoa.length - 1; ws["!ref"] = XLSX.utils.encode_range(range);
       ws["!cols"] = headers.map(() => ({ wch: 18 }));
-
       XLSX.utils.book_append_sheet(wb, ws, "Report");
 
       let fname = filenameInput.value.trim() || "KEMA_Sales_Report";
@@ -529,16 +461,10 @@
     });
 
     resetBtn.addEventListener("click", () => {
-      masterFile = null;
-      deltaFiles = [];
-      rawData = [];
-      currentData = [];
-      cellEdits = {};
-      historyStack = [];
-      report.innerHTML = "";
-      totalOrders.textContent = "Total Orders: 0";
-      ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"]
-        .forEach(id => el(id).disabled = true);
+      masterFile = null; deltaFiles = []; rawData = []; currentData = []; cellEdits = {}; historyStack = [];
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+      report.innerHTML = ""; totalOrders.textContent = "Total Orders: 0";
+      ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"].forEach(id => el(id).disabled = true);
       updateFilterTags();
     });
   </script>
