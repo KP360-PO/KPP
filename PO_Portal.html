@@ -1,466 +1,570 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="auto">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PO Team Projects</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
   <style>
-    :root { --primary-color:#2C2C2E; --primary-hover:#2C2C2E; --background:#F8F9FA; --card-bg:#FFFFFF; --text-color:#2C2C2E; --spacing:1.5rem; --radius:0.5rem; --transition:0.3s; }
-    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'Inter',sans-serif; background:var(--background); color:var(--text-color); display:flex; flex-direction:column; min-height:100vh; }
-    #welcome-modal { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
-    .modal-content { background:#fff; padding:var(--spacing); border-radius:var(--radius); max-width:400px; text-align:center; box-shadow:0 4px 8px rgba(0,0,0,0.2); }
-    .modal-content h2 { color:var(--primary-color); margin-bottom:1rem; }
-    .modal-content p { color:#555; margin-bottom:1.5rem; }
-    .modal-content button { background:var(--primary-color); color:#fff; border:none; padding:0.5rem 1rem; border-radius:var(--radius); cursor:pointer; }
-    header { background:#fff; padding:calc(var(--spacing)*1.5) var(--spacing); text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.1); transition: transform var(--transition) ease;}
-    .header-content img { max-height:20px; margin-bottom:var(--spacing); }
-    .header-content h1 { font-size:2.5rem; color:var(--primary-color); }
-    .header-content p { color:#555; margin-top:0.5rem; }
-    #tool-viewer { display:none; flex:1; flex-direction:column; }
-    .video-wrapper {position: relative; width: 100%; height: 80vh; overflow: hidden;}
-    .video-wrapper.tool iframe {position: absolute; top: 0; left: 0; width: 100%; height: 100%;}
-    .video-wrapper.tutorial iframe {position: absolute; top: 0; left: 50%; transform: translateX(-50%); height: 100%; width: calc(80vh * (16/9));}
-    #back-btn { background:var(--primary-color); color:#fff; border:none; padding:0.5rem 1rem; margin:var(--spacing); border-radius:var(--radius); cursor:pointer; align-self:start; }
-    main { flex:1; max-width:1200px; margin:var(--spacing) auto; padding:0 var(--spacing); }
-    .search-container { margin-bottom:var(--spacing); text-align:center; }
-    .search-container select { width:100%; max-width:360px; padding:0.75rem 1rem; border:1px solid #ccc; border-radius:var(--radius); font-size:1rem; transition:border-color var(--transition); }
-    .search-container select:focus { outline:none; border-color:var(--primary-color); box-shadow:0 0 0 3px rgba(36,48,94,0.15); }
-    .projects-container { display:flex; flex-wrap:wrap; justify-content:center; gap:var(--spacing); }
-    .project-card {
-      flex:1 1 calc(50% - var(--spacing));
-      max-width:360px;
-      background:var(--card-bg);
-      border-radius:var(--radius);
-      box-shadow:0 4px 8px rgba(0,0,0,0.05);
-      transition:transform var(--transition), box-shadow var(--transition);
-      position:relative;
-      overflow:hidden;
-      margin:var(--spacing) 0;
-    }
-    .project-card:hover { transform:translateY(-4px); box-shadow:0 8px 16px rgba(0,0,0,0.1); }
-    .owner-toggle { display:none; }
-    .owner-info {
-      display:none;
-      padding:var(--spacing);
-      background:#f0f4f8;
-      border-bottom:1px solid #e0e0e0;
-    }
-    .project-card:hover .owner-info,
-    .project-card:focus-within .owner-info {
-      display:block;
-    }
-    @media (hover: none) and (pointer: coarse) {
-      .owner-toggle { display:block; margin:var(--spacing) auto 0; }
-      .owner-info { display:none; }
-      .project-card:hover .owner-info { display:none; }
-    }
-    .owner-photo { width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid var(--primary-color); display:block; margin:0 auto; }
-    .owner-name { text-align:center; margin-top:0.5rem; color:var(--primary-color); font-weight:600; }
-    .project-content { padding:var(--spacing); text-align:left; padding-bottom:calc(var(--spacing)*2); }
-    .project-content h2 { font-size:1.25rem; color:var(--primary-color); margin-bottom:0.5rem; }
-    .project-content p { color:#555; margin-bottom:1rem; font-size:0.95rem; }
-    .view-tool, .view-tutorial {
-      position:absolute;
-      bottom:var(--spacing);
-      display: flex;
-      align-items: center;
-      gap: 0.5em;
-      text-decoration:none;
-      font-weight:600;
-      color:var(--primary-color);
-      transition:border-color var(--transition), background 0.2s;
-      border-bottom:2px solid transparent;
-      cursor:pointer;
-      background: none;
-      padding: 0.3em 1.2em 0.3em 0.8em;
-      border-radius: 1.2em;
-    }
-    .view-tool { left:var(--spacing); }
-    .view-tutorial { right:var(--spacing); }
-    .view-tool.clicked, .view-tutorial.clicked {
-      color: #fff;
-      background: var(--primary-color);
-      border-bottom:2px solid var(--primary-hover);
-    }
-    .view-tool .checkmark,
-    .view-tutorial .checkmark {
-      display: none;
-      font-size: 1.1em;
-      color: #fff;
-      background: var(--primary-hover);
-      border-radius: 50%;
-      width: 1.2em;
-      height: 1.2em;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      line-height: 1.2em;
-    }
-    .view-tool.clicked .checkmark,
-    .view-tutorial.clicked .checkmark {
-      display: inline-flex;
-    }
-    .view-tool:hover, .view-tutorial:hover { border-color:var(--primary-hover); }
-    footer { background:#fff; text-align:center; padding:var(--spacing) 0; color:#777; font-size:0.875rem; border-top:1px solid #eaeaea; }
+    :root {--bg: #f7f8fa;--card: #ffffff;--text: #111827;--muted: #6b7280;--border: #e5e7eb;--ring: 54 120 252; /* rgb */--primary: #1f2937;--primary-contrast: #ffffff;--chip-bg: #eef2ff;--chip-text: #3730a3; --radius: 14px;--space: 1.25rem;--shadow-sm: 0 1px 2px rgba(0,0,0,.06);--shadow-md: 0 6px 16px rgba(0,0,0,.08);--shadow-lg: 0 12px 28px rgba(0,0,0,.12);--transition: .25s cubic-bezier(.2,.7,.2,1);--maxw: 1200px;}
+    @media (prefers-color-scheme: dark)
+    {html[data-theme="auto"] {--bg: #0b0c0f;--card: #121318;--text: #e5e7eb;--muted: #a1a1aa;--border: #23242a;--ring: 103 163 255;--primary: #d1d5db;--primary-contrast: #0b0c0f;--chip-bg: #1e293b;--chip-text: #c7d2fe;--shadow-sm: 0 1px 2px rgba(0,0,0,.4);--shadow-md: 0 8px 24px rgba(0,0,0,.45); --shadow-lg: 0 18px 40px rgba(0,0,0,.55);}}
+    html[data-theme="dark"] {--bg: #0b0c0f;--card: #121318;--text: #e5e7eb;--muted: #a1a1aa;--border: #23242a;--ring: 103 163 255;--primary: #d1d5db;--primary-contrast: #0b0c0f;--chip-bg: #1e293b;--chip-text: #c7d2fe;--shadow-sm: 0 1px 2px rgba(0,0,0,.4);--shadow-md: 0 8px 24px rgba(0,0,0,.45);--shadow-lg: 0 18px 40px rgba(0,0,0,.55);}
+    html, body { height: 100%; }
+    * { box-sizing: border-box; }
+    body {margin: 0;font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans';background: var(--bg);color: var(--text);line-height: 1.45;display: flex;flex-direction: column;}
+    a { color: inherit; text-decoration: none; }
+    header {position: sticky; top: 0; z-index: 10;background: linear-gradient(180deg, rgba(0,0,0,0.04), transparent), var(--card);backdrop-filter: saturate(1.2) blur(6px);border-bottom: 1px solid var(--border);transition: box-shadow var(--transition), transform var(--transition), padding var(--transition), background var(--transition);box-shadow: var(--shadow-sm);}
+    .header-inner {max-width: var(--maxw);margin: 0 auto;padding: calc(var(--space) * 1.2) var(--space);display: grid;grid-template-columns: auto 1fr auto;gap: 1rem;align-items: center;}
+    header.scrolled .header-inner { padding: .6rem var(--space); }
+    header.scrolled { box-shadow: var(--shadow-md); }
+    .brand { display: flex; align-items: center; gap: .75rem; }
+    .brand img { height: 28px; width: auto; object-fit: contain; }
+    .brand-title { display: grid; line-height: 1.1; }
+    .brand-title strong { font-size: 1.15rem; letter-spacing: .2px; }
+    .brand-title span { font-size: .85rem; color: var(--muted); }
+    .actions { display: flex; align-items: center; gap: .5rem; }
+    .btn {appearance: none; border: 1px solid var(--border); background: var(--card); color: var(--text);padding: .55rem .85rem; border-radius: 999px; font-weight: 600; cursor: pointer;box-shadow: var(--shadow-sm);transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition), background var(--transition), color var(--transition);}
+    .btn:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .btn:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(var(--ring) / .25); }
+    .btn-primary { border-color: transparent; background: var(--primary); color: var(--primary-contrast); }
+    #welcome-modal {position: fixed; inset: 0; display: none;align-items: center; justify-content: center;background: rgba(0,0,0,.45);z-index: 1000;padding: 1rem;}
+    #welcome-modal[open] { display: flex; }
+    .modal-content {background: var(--card);width: 100%; max-width: 520px;border-radius: 16px;padding: 1.5rem 1.25rem;box-shadow: var(--shadow-lg);border: 1px solid var(--border);text-align: left;}
+    .modal-content h2 { margin: 0 0 .6rem; font-size: 1.4rem; }
+    .modal-content p { margin: 0 0 1rem; color: var(--muted); }
+    .modal-row {display: flex; align-items: center; gap: .6rem;margin-top: .6rem;}
+    .modal-row label {display: inline-flex; align-items: center; gap: .55rem;color: var(--muted); font-size: .95rem; cursor: pointer;user-select: none;}
+    .modal-row input[type="checkbox"] {appearance: none;width: 18px; height: 18px; border-radius: 4px;border: 1.5px solid var(--border);display: grid; place-items: center;background: var(--card);transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);}
+    .modal-row input[type="checkbox"]::after {content: "✓"; font-size: 14px; transform: scale(0); transition: transform var(--transition);}
+    .modal-row input[type="checkbox"]:checked {background: var(--primary); border-color: var(--primary);color: var(--primary-contrast);}
+    .modal-row input[type="checkbox"]:checked::after { transform: scale(1); color: var(--primary-contrast); }
+    .modal-actions {display:flex; justify-content:flex-end; gap:.75rem; margin-top: 1rem;}
+    main { width: 100%; max-width: var(--maxw); margin: 1.25rem auto 2rem; padding: 0 var(--space); flex: 1; }
+    .toolbar {display: grid; grid-template-columns: 1fr auto; gap: .75rem;margin-bottom: 1.25rem;}
+    .filters {display: grid;grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));gap: .75rem;align-items: center;}
+    .search {display: flex; gap: .5rem; align-items: center;background: var(--card);border: 1px solid var(--border);border-radius: 999px;padding: .5rem .75rem;box-shadow: var(--shadow-sm);}
+    .search svg { flex: 0 0 18px; }
+    .search select {flex: 1; border: 0; background: transparent; color: var(--text);font-size: .98rem; padding: .35rem .25rem; outline: none;}
+    .projects-container {display: grid;grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));gap: 1.1rem;}
+    .project-card {background: var(--card);border: 1px solid var(--border);border-radius: var(--radius);box-shadow: var(--shadow-md);overflow: clip;display: grid;grid-template-rows: auto 1fr auto;transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);will-change: transform;}
+    .project-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .projects-container {display: grid;grid-template-columns: repeat(auto-fill, minmax(320px, 360px));gap: 1.1rem;justify-content: start;}
+    .project-card {width: auto;}
+    @media (max-width: 640px) {.projects-container { grid-template-columns: 1fr; } .project-card { width: 100%; }}
+    .owner-strip {display: flex; gap: .5rem; flex-wrap: wrap;padding: .75rem .85rem .5rem;border-bottom: 1px dashed var(--border);background: color-mix(in oklab, var(--card), var(--bg) 35%);}
+    .owner-chip {display: inline-flex; align-items: center; gap: .4rem;background: var(--chip-bg); color: var(--chip-text);border: 1px solid var(--border);padding: .25rem .5rem; border-radius: 999px; font-size: .8rem; font-weight: 600;}
+    .owner-chip img {width: 20px; height: 20px; border-radius: 50%; object-fit: cover;border: 1px solid var(--border);}
+    .project-content { padding: 1rem .95rem 0; }
+    .project-content h2 { font-size: 1.05rem; margin: 0 0 .4rem; }
+    .project-content p { margin: 0 0 .75rem; color: var(--muted); font-size: .94rem; }
+    .card-actions {display: flex; justify-content: space-between; align-items: center; gap: .5rem;padding: .75rem .85rem 1rem; position: relative;}
+    .action {display: inline-flex; align-items: center; gap: .5rem;padding: .5rem .9rem;border-radius: 999px;font-weight: 700; font-size: .92rem;border: 1px solid var(--border); background: var(--card);cursor: pointer; user-select: none;transition: transform var(--transition), box-shadow var(--transition), background var(--transition), color var(--transition), border-color var(--transition);}
+    .action:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .action:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(var(--ring)/.25); }
+    .action-primary { background: var(--primary); color: var(--primary-contrast); border-color: transparent; }
+    .action .checkmark {display: none; width: 1.2em; height: 1.2em; border-radius: 999px;align-items: center; justify-content: center; font-size: .9em; font-weight: 800;background: rgba(var(--ring)/.9); color: #fff;}
+    .action.clicked .checkmark { display: inline-flex; }
+    #tool-viewer { display: none; flex-direction: column; gap: .75rem; }
+    .viewer-bar {display: flex; align-items: center; justify-content: space-between; gap: .75rem;padding: .6rem var(--space);background: var(--card); border-bottom: 1px solid var(--border);box-shadow: var(--shadow-sm);}
+    #back-btn {background: var(--card); color: var(--text); border: 1px solid var(--border);padding: .5rem .9rem; border-radius: 999px; font-weight: 700; cursor: pointer;transition: box-shadow var(--transition), transform var(--transition);}
+    #back-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    #tool-title { font-weight: 700; }
+    .video-wrapper {position: relative; width: 100%; height: calc(100vh - 170px);overflow: hidden; background: var(--card); border-top: 1px solid var(--border);}
+    .video-wrapper iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .video-wrapper.tutorial iframe { left: 50%; transform: translateX(-50%); width: min(100%, calc(80vh * (16/9))); }
+    footer { background: var(--card); border-top: 1px solid var(--border); text-align: center; padding: 1rem 0; color: var(--muted); }
+    .empty {padding: 2.25rem; text-align: center; color: var(--muted);border: 2px dashed var(--border); border-radius: var(--radius);background: color-mix(in oklab, var(--card), var(--bg) 25%);}
+    :focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(var(--ring)/.25); border-radius: 10px; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   </style>
 </head>
 <body>
-  <div id="welcome-modal">
+  <!-- WELCOME MODAL -->
+  <div id="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
     <div class="modal-content">
-      <h2>Welcome!</h2>
-      <p>Here you can explore all the projects created by the PO team.</p>
-      <button id="modal-close">Get Started</button>
+      <h2 id="welcome-title">Welcome!</h2>
+      <p>Explore all the projects created by the PO team.</p>
+      <div class="modal-row">
+        <label for="dont-show">
+          <input type="checkbox" id="dont-show" />
+          Don’t show this again
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button id="modal-close" class="btn btn-primary">Get Started</button>
+      </div>
     </div>
   </div>
-  <header>
-    <div class="header-content">
-      <img src="https://raw.githubusercontent.com/purchase-order-team/Processors/main/path/to/photos/Default%20KarParts360%20LOGO%20Version%203.png" alt="KarParts360 Logo">
-      <h1>PO Team Projects</h1>
-      <p>Discover what our teammates are working on</p>
+
+  <!-- HEADER -->
+  <header id="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <img loading="lazy" decoding="async" src="https://raw.githubusercontent.com/purchase-order-team/Processors/main/path/to/photos/Default%20KarParts360%20LOGO%20Version%203.png" alt="KarParts360 logo" />
+        <div class="brand-title">
+          <strong>PO Team Projects</strong>
+          <span>Discover what our teammates are working on</span>
+        </div>
+      </div>
+
+      <div></div>
+
+      <div class="actions">
+        <button id="theme-toggle" class="btn" aria-label="Toggle dark mode">🌓</button>
+      </div>
     </div>
   </header>
-  <div id="tool-viewer">
-    <button id="back-btn">← Back to Home</button>
-    <div class="video-wrapper">
-    <iframe id="tool-frame" src="" frameborder="0" allowfullscreen></iframe>
-  </div>
-  </div>
-  <main>
-    <div class="search-container">
-      <select id="search" aria-label="Select project owner">
-        <option value="">Filter by owner</option>
-        <option value="Marcus Bañez">Marcus Bañez</option>
-        <option value="Kathleen Delos Santos">Kathleen Delos Santos</option>
-        <option value="Christine Anastacio">Christine Anastacio</option>
-        <option value="Mary Guray">Mary Guray</option>
-        <option value="Jerrilyn Alarma">Jerrilyn Alarma</option>
-        <option value="Shari Kristine Torres">Shari Kristine Torres</option>
-        <option value="Hannah Ranario">Hannah Ranario</option>
-        <option value="Daricalyn Rosales">Daricalyn Rosales</option>
-        <option value="CJ Paet">CJ Paet</option>
-        <option value="Cheztierlee Arlos">Cheztierlee Arlos</option>
-        <option value="Daryl Pagilagan">Daryl Pagilagan</option>
-        <option value="Hyacinth Cipriano">Hyacinth Cipriano</option>
-        <option value="Jovilyn Leonaras">Jovilyn Leonaras</option>
-        <option value="Mariel Zipagan">Mariel Zipagan</option>
-        <option value="Ariane De Guzman">Ariane De Guzman</option>
-      </select>
+
+  <!-- VIEWER -->
+  <div id="tool-viewer" aria-live="polite">
+    <div class="viewer-bar">
+      <button id="back-btn" type="button" aria-label="Back to project list">← Back</button>
+      <div id="tool-title"></div>
+      <span></span>
     </div>
+    <div class="video-wrapper">
+      <iframe id="tool-frame" src="" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <main>
+    <div class="toolbar" role="search">
+      <div class="filters">
+        <!-- Filter by Owner -->
+        <div class="search">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-3.9-3.9M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <select id="owner-filter" aria-label="Filter by owner">
+            <option value="">Filter by owner</option>
+            <option value="Marcus Bañez">Marcus Bañez</option>
+            <option value="Kathleen Delos Santos">Kathleen Delos Santos</option>
+            <option value="Christine Anastacio">Christine Anastacio</option>
+            <option value="Mary Guray">Mary Guray</option>
+            <option value="Jerrilyn Alarma">Jerrilyn Alarma</option>
+            <option value="Shari Kristine Torres">Shari Kristine Torres</option>
+            <option value="Hannah Ranario">Hannah Ranario</option>
+            <option value="Daricalyn Rosales">Daricalyn Rosales</option>
+            <option value="CJ Paet">CJ Paet</option>
+            <option value="Cheztierlee Arlos">Cheztierlee Arlos</option>
+            <option value="Daryl Pagilagan">Daryl Pagilagan</option>
+            <option value="Hyacinth Cipriano">Hyacinth Cipriano</option>
+            <option value="Jovilyn Leonaras">Jovilyn Leonaras</option>
+            <option value="Mariel Zipagan">Mariel Zipagan</option>
+            <option value="Ariane De Guzman">Ariane De Guzman</option>
+          </select>
+        </div>
+
+        <!-- NEW: Filter by Use -->
+        <div class="search">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-3.9-3.9M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <select id="use-filter" aria-label="Filter by use">
+            <option value="">Filter by use</option>
+            <option value="Ordering">Ordering</option>
+            <option value="Labeling">Labeling</option>
+            <option value="Wholesale">Wholesale</option>
+            <option value="Inventory">Inventory</option>
+            <option value="Invoice">Invoice</option>
+            <option value="Sweeping">Sweeping</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="clear-filter" class="btn" type="button" aria-label="Clear filters">Clear</button>
+    </div>
+
     <div id="projects" class="projects-container">
-     <!-- Ordering File Generator -->
-      <div class="project-card" data-title="Marcus Bañez,Kathleen Delos Santos">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Marcus.jpeg" alt="Marcus Bañez">
-          <div class="owner-name">Marcus Bañez</div>
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Kathleen.jpeg" alt="Kathleen Delos Santos">
-          <div class="owner-name">Kathleen Delos Santos</div>
+      
+      <!-- Ordering File Generator -->
+      <div class="project-card" data-title="Marcus Bañez,Kathleen Delos Santos" data-name="Ordering File Generator" data-use="Ordering">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Marcus.jpeg" alt=""/>Marcus Bañez</span>
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Kathleen.jpeg" alt=""/>Kathleen Delos Santos</span>
         </div>
         <div class="project-content">
           <h2>Ordering File Generator</h2>
           <p>Prepares and formats files for seamless NetSuite PO imports.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/Depo_KSI_FileGenerator_Marcus_Kathleen.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1lfEG82__S6smKIIORzhrBSSCvfBYzbJS/preview">View Tutorial &rarr;</a>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/Depo_KSI_FileGenerator_Marcus_Kathleen.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1lfEG82__S6smKIIORzhrBSSCvfBYzbJS/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
+
       <!-- NetSuite Importing Tool -->
-      <div class="project-card" data-title="Marcus Bañez,Kathleen Delos Santos">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Marcus.jpeg" alt="Marcus Bañez">
-          <div class="owner-name">Marcus Bañez</div>
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Kathleen.jpeg" alt="Kathleen Delos Santos">
-          <div class="owner-name">Kathleen Delos Santos</div>
+      <div class="project-card" data-title="Marcus Bañez,Kathleen Delos Santos" data-name="NetSuite Importing Tool" data-use="Ordering">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Marcus.jpeg" alt=""/>Marcus Bañez</span>
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Kathleen.jpeg" alt=""/>Kathleen Delos Santos</span>
         </div>
         <div class="project-content">
           <h2>NetSuite Importing Tool</h2>
           <p>Formats and validates data files for smooth import into NetSuite.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/NetSuite_Importing_Tool_Marcus_Kathleen.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1Mx3i0rijRrpVNtJ-DeO0Al4HnWgGTwal/preview">View Tutorial &rarr;</a>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/NetSuite_Importing_Tool_Marcus_Kathleen.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1Mx3i0rijRrpVNtJ-DeO0Al4HnWgGTwal/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
+
       <!-- Order Tagging Tool -->
-      <div class="project-card" data-title="Christine Anastacio">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/christine%20anastacio.jpeg" alt="Christine Anastacio">
-          <div class="owner-name">Christine Anastacio</div>
+      <div class="project-card" data-title="Christine Anastacio" data-name="Order Tagging Tool" data-use="Labeling">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/christine%20anastacio.jpeg" alt=""/>Christine Anastacio</span>
         </div>
         <div class="project-content">
           <h2>Order Tagging Tool</h2>
           <p>Processes detailed order data to ensure accurate tagging and fulfillment in ShipStation.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/Order_Tagging_Christine.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1wjxVI9hu6p_xxtVdRixV2OELt50CUI2r/preview">View Tutorial &rarr;</a>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/Order_Tagging_Christine.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1wjxVI9hu6p_xxtVdRixV2OELt50CUI2r/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
+
       <!-- International Address Sweeping Tool -->
-      <div class="project-card" data-title="Marcus Bañez,Kathleen Delos Santos">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Marcus.jpeg" alt="Marcus Bañez">
-          <div class="owner-name">Marcus Bañez</div>
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Kathleen.jpeg" alt="Kathleen Delos Santos">
-          <div class="owner-name">Kathleen Delos Santos</div>
+      <div class="project-card" data-title="Marcus Bañez,Kathleen Delos Santos" data-name="International Address Sweeping Tool" data-use="Sweeping">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Marcus.jpeg" alt=""/>Marcus Bañez</span>
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Kathleen.jpeg" alt=""/>Kathleen Delos Santos</span>
         </div>
         <div class="project-content">
           <h2>International Address Sweeping Tool</h2>
           <p>Identifies and tracks international shipments to verify proper processing.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/International_Address_Sweep.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1wJpY_OGICPxCDCEXcb7odn78MVxql1Tm/preview">View Tutorial &rarr;</a>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/International_Address_Sweep.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1wJpY_OGICPxCDCEXcb7odn78MVxql1Tm/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
+
       <!-- PO Scrubbing Tool -->
-      <div class="project-card" data-title="Mary Guray">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/mary guray.jpeg" alt="Mary Guray">
-          <div class="owner-name">Mary Guray</div>
+      <div class="project-card" data-title="Mary Guray" data-name="PO Scrubbing Tool" data-use="Ordering">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/mary guray.jpeg" alt=""/>Mary Guray</span>
         </div>
         <div class="project-content">
           <h2>PO Scrubbing Tool</h2>
           <p>Validates selected SKUs to prevent duplicates and ensure accurate fulfillment.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/POScrubbing_Mary.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/12gstWoW3w8UTcyXSz7gExR6yFfxMA30n/preview">View Tutorial &rarr;</a>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/POScrubbing_Mary.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/12gstWoW3w8UTcyXSz7gExR6yFfxMA30n/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
+
       <!-- Carrier Count Tool -->
-      <div class="project-card" data-title="Jerrilyn Alarma">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Jerrilyn.jpg" alt="Jerrilyn Alarma">
-          <div class="owner-name">Jerrilyn Alarma</div>
+      <div class="project-card" data-title="Jerrilyn Alarma" data-name="Carrier Count Tool" data-use="Labeling">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Jerrilyn.jpg" alt=""/>Jerrilyn Alarma</span>
         </div>
         <div class="project-content">
           <h2>Carrier Count Tool</h2>
           <p>Generates daily summaries of carriers used to optimize shipping operations.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/carrier_count_Jerrilyn.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1z-dsegK9HjJd3tkr9UCVBYs_eBpv3m7R/preview">View Tutorial &rarr;</a>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/carrier_count_Jerrilyn.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1z-dsegK9HjJd3tkr9UCVBYs_eBpv3m7R/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
-      <!-- NPM Calculator Tool -->
-      <div class="project-card" data-title="Shari Kristine Torres,Hannah Ranario">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Shari.jpeg" alt="Shari Kristine Torres">
-          <div class="owner-name">Shari Kristine Torres</div>
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Hannah.jpeg" alt="Hannah Ranario">
-          <div class="owner-name">Hannah Ranario</div>
+
+      <!-- NPM Calculator -->
+      <div class="project-card" data-title="Shari Kristine Torres,Hannah Ranario" data-name="NPM Calculator" data-use="Labeling">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Shari.jpeg" alt=""/>Shari Kristine Torres</span>
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Hannah.jpeg" alt=""/>Hannah Ranario</span>
         </div>
         <div class="project-content">
           <h2>NPM Calculator</h2>
           <p>Calculates net profit margins per order and flags high shipping costs to inform label selecting decisions.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/NPM_Calc_for_Labelling.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1i4g0AzzO6trKVGNkauefFumVhQlyag_E/preview">View Tutorial &rarr;</a>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/NPM_Calc_for_Labelling.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1i4g0AzzO6trKVGNkauefFumVhQlyag_E/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
+
       <!-- Amazon Logistics Count Tool -->
-      <div class="project-card" data-title="Daricalyn Rosales">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Daricalyn.jpeg" alt="Daricalyn Rosales">
-          <div class="owner-name">Daricalyn Rosales</div>
+      <div class="project-card" data-title="Daricalyn Rosales" data-name="Amazon Logistics Count Tool" data-use="Labeling">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Daricalyn.jpeg" alt=""/>Daricalyn Rosales</span>
         </div>
         <div class="project-content">
           <h2>Amazon Logistics Count Tool</h2>
           <p>Summarizes daily orders shipped via Amazon Logistics to streamline performance analysis.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/Amazon_Logistics_Count_Dari.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1efayYJxbZUsOnjpKkBSGlt3d5qjBBmM5/preview">View Tutorial &rarr;</a>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/Amazon_Logistics_Count_Dari.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1efayYJxbZUsOnjpKkBSGlt3d5qjBBmM5/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
+
       <!-- KSI Inventory Generator -->
-      <div class="project-card" data-title="CJ Paet">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/test%20avatar.png" alt="CJ Paet">
-          <div class="owner-name">CJ Paet</div>
+      <div class="project-card" data-title="CJ Paet" data-name="KSI Inventory Generator" data-use="Inventory">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/test%20avatar.png" alt=""/>CJ Paet</span>
         </div>
         <div class="project-content">
           <h2>KSI Inventory Generator</h2>
-          <p>This tool organizes KSI inventory files, preparing them for upload to ZM and CA.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/KSI_Inventory_File_Generator_CJ.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/155fXeCSwpIkjtJXc3nb9D2DOdRp_hih3/preview">View Tutorial &rarr;</a>
+          <p>Organizes KSI inventory files for upload to ZM and CA.</p>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/KSI_Inventory_File_Generator_CJ.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/155fXeCSwpIkjtJXc3nb9D2DOdRp_hih3/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
+
       <!-- ZS File Sorter -->
-      <div class="project-card" data-title="Cheztierlee Arlos">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Chez.jpeg" alt="Cheztierlee Arlos">
-          <div class="owner-name">Cheztierlee Arlos</div>
+      <div class="project-card" data-title="Cheztierlee Arlos" data-name="ZS File Sorter" data-use="Labeling">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Chez.jpeg" alt=""/>Cheztierlee Arlos</span>
         </div>
         <div class="project-content">
           <h2>ZS File Sorter</h2>
-          <p>This tool is used to sort and fix the files to be used to upload in Beta Zenmighty or ZS.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/Ordersortingandupload_Chez.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1Pi2Uct8KUWiMyimm_P1VMaF_aACHPpqV/preview">View Tutorial &rarr;</a>
+          <p>Sorts and fixes files for Beta Zenmighty or ZS uploads.</p>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/Ordersortingandupload_Chez.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1Pi2Uct8KUWiMyimm_P1VMaF_aACHPpqV/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
-    <!-- Eagle Inventory Refiner -->
-       <div class="project-card" data-title="Mariel Zipagan">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Mariel.jpeg" alt="Mariel Zipagan">
-          <div class="owner-name">Mariel Zipagan</div>
+
+      <!-- Eagle Inventory Refiner -->
+      <div class="project-card" data-title="Mariel Zipagan" data-name="Eagle Inventory Refiner" data-use="Inventory">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Mariel.jpeg" alt=""/>Mariel Zipagan</span>
         </div>
         <div class="project-content">
           <h2>Eagle Inventory Refiner</h2>
-          <p>This tool is used to organize the Eagle Inventory Files to be uploaded in CA and ZM</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/Eagle _Inventoy_Refiner.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1CMu1YvG7P23q8Ond0cnUEJsmP8p-_NME/preview">View Tutorial &rarr;</a>
+          <p>Organizes Eagle Inventory files for CA and ZM.</p>
+        </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/Eagle _Inventoy_Refiner.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://drive.google.com/file/d/1CMu1YvG7P23q8Ond0cnUEJsmP8p-_NME/preview"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
       </div>
-      <!-- AAG SO Processor -->
-      <div class="project-card" data-title="CJ Paet">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/test%20avatar.png" alt="CJ Paet">
-          <div class="owner-name">CJ Paet</div>
+
+      <!-- AAG Sales Order File Generator -->
+      <div class="project-card" data-title="CJ Paet" data-name="AAG Sales Order File Generator" data-use="Wholesale">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/test%20avatar.png" alt=""/>CJ Paet</span>
         </div>
         <div class="project-content">
           <h2>AAG Sales Order File Generator</h2>
-          <p>This tool is used to organize AAG's Sales order to be imported in Netsuite</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/AAG_SO_Processor.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://your.video.url/here">View Tutorial &rarr;</a>
+          <p>Organizes AAG sales orders for NetSuite import.</p>
         </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/AAG_SO_Processor.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://your.video.url/here"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
-         <!-- Lookup / Fulfillment File -->
-      <div class="project-card" data-title="Ariane De Guzman">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/test%20avatar.png" alt="CJ Paet">
-          <div class="owner-name">Ariane De Guzman</div>
+      </div>
+
+      <!-- Lookup / Fulfillment File -->
+      <div class="project-card" data-title="Ariane De Guzman" data-name="Lookup / Fulfillment File" data-use="Invoice">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/test%20avatar.png" alt=""/>Ariane De Guzman</span>
         </div>
         <div class="project-content">
           <h2>Lookup / Fulfillment File</h2>
-          <p>This tool is used to organize the invoice files to be used in importing in Netsuite. Can also be used for other reports that requires fetching of details same as vlookup process.</p>
-          <a href="#" class="view-tool" data-src="https://aridg1999.github.io/aridg/FileMerge.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://your.video.url/here">View Tutorial &rarr;</a>
+          <p>Organizes invoice files for NetSuite imports and other vlookup-like reports.</p>
         </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://aridg1999.github.io/aridg/FileMerge.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://your.video.url/here"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
-         <!-- KEMA SO and IF-->
-     <div class="project-card" data-title="Christine Anastacio">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/christine%20anastacio.jpeg" alt="Christine Anastacio">
-          <div class="owner-name">Christine Anastacio</div>
+      </div>
+
+      <!-- KEMA Sales Order and Item Fulfillment -->
+      <div class="project-card" data-title="Christine Anastacio" data-name="KEMA Sales Order and Item Fulfillment" data-use="Wholesale">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/christine%20anastacio.jpeg" alt=""/>Christine Anastacio</span>
         </div>
         <div class="project-content">
           <h2>KEMA Sales Order and Item Fulfillment</h2>
-          <p>This tool is used to organize the files to be imported in Netsuite for KEMA Sales orders and Item Fulfillment.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/KEMA_SO&IF.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://your.video.url/here">View Tutorial &rarr;</a>
+          <p>Prepares KEMA Sales Orders and Item Fulfillment files for NetSuite.</p>
         </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/KEMA_SO&IF.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://your.video.url/here"><span class="checkmark">✓</span>View Tutorial</a>
         </div>
-        <!-- Partslink Lookup Tool -->
-      <div class="project-card" data-title="Jerrilyn Alarma">
-        <button class="owner-toggle">Owners</button>
-        <div class="owner-info">
-          <img class="owner-photo" src="https://kp360-po.github.io/KPP/path/to/photos/Jerrilyn.jpg" alt="Jerrilyn Alarma">
-          <div class="owner-name">Jerrilyn Alarma</div>
+      </div>
+
+      <!-- Alternative SKU Search Tool -->
+      <div class="project-card" data-title="Jerrilyn Alarma" data-name="Alternative SKU Search Tool" data-use="Ordering">
+        <div class="owner-strip">
+          <span class="owner-chip"><img loading="lazy" decoding="async" src="https://kp360-po.github.io/KPP/path/to/photos/Jerrilyn.jpg" alt=""/>Jerrilyn Alarma</span>
         </div>
         <div class="project-content">
           <h2>Alternative SKU Search Tool</h2>
-          <p>This tool helps you to easily check in where supplier you can crossfulfill an order by searching using the Partslink.</p>
-          <a href="#" class="view-tool" data-src="https://kp360-po.github.io/KPP/Partslink_Lookup.html">View Tool &rarr;</a>
-          <a href="#" class="view-tutorial" data-tutorial-src="https://your.video.url/here">View Tutorial &rarr;</a>
+          <p>Finds cross-fulfillment options by searching with Partslink.</p>
         </div>
+        <div class="card-actions">
+          <a href="#" class="action action-primary view-tool" data-src="https://kp360-po.github.io/KPP/Partslink_Lookup.html"><span class="checkmark">✓</span>View Tool</a>
+          <a href="#" class="action view-tutorial" data-tutorial-src="https://your.video.url/here"><span class="checkmark">✓</span>View Tutorial</a>
+        </div>
+      </div>
     </div>
-    </div>
+
+    <div id="empty-state" class="empty" style="display:none;">No projects match your filters.</div>
   </main>
-  <footer>
-    &copy; 2025 KarParts360 PO TEAM.
-  </footer>
-   <script>
-    // Do NOT clear clickedLinks on page load anymore!
-    // window.addEventListener('load', function() {
-    //   localStorage.removeItem('clickedLinks');
-    //   localStorage.removeItem('po_projects_scroll');
-    // });
 
-    // Modal close
-    document.getElementById('modal-close').addEventListener('click',()=>{document.getElementById('welcome-modal').style.display='none';});
+  <footer>&copy; 2025 KarParts360 PO TEAM.</footer>
 
-    // Filter by owner
-    document.getElementById('search').addEventListener('change',function(e){
-      const term=e.target.value.toLowerCase();
-      document.querySelectorAll('.project-card').forEach(card=>{
-        const title=card.getAttribute('data-title').toLowerCase();
-        card.style.display=term===''||title.includes(term)?'block':'none';
+  <script>
+    // Helpers
+    const $ = (s, c=document) => c.querySelector(s);
+    const $$ = (s, c=document) => Array.from(c.querySelectorAll(s));
+
+    // Theme toggle (kept)
+    (function initTheme(){
+      const saved = localStorage.getItem('po_theme');
+      const html = document.documentElement;
+      if (saved === 'light' || saved === 'dark') html.setAttribute('data-theme', saved);
+      $('#theme-toggle').addEventListener('click', () => {
+        const current = html.getAttribute('data-theme');
+        const next = current === 'dark' ? 'auto' : current === 'auto' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('po_theme', next);
       });
-    });
+    })();
 
-    // Toggle for touch devices only
-    document.querySelectorAll('.owner-toggle').forEach(btn=>btn.addEventListener('click',()=>{
-      const info=btn.nextElementSibling;
-      info.style.display=info.style.display==='block'?'none':'block';
-    }));
+    // Header scroll shrink
+    (function headerScroll(){
+      const header = $('#app-header');
+      const onScroll = () => header.classList.toggle('scrolled', window.scrollY > 6);
+      onScroll(); window.addEventListener('scroll', onScroll, {passive:true});
+    })();
 
-    function getProjectId(link) {
-      return link.dataset.src || link.dataset.tutorialSrc || link.href;
-    }
-
-    function restoreClickedLinks() {
-      const clicked = JSON.parse(localStorage.getItem('clickedLinks')||'{}');
-      document.querySelectorAll('.view-tool, .view-tutorial').forEach(link=>{
-        const id = getProjectId(link);
-        if(clicked[id]) link.classList.add('clicked');
+    // Welcome modal (spacing fixed + don't show again)
+    (function welcomeModal(){
+      const KEY = 'po_welcome_dont_show';
+      const modal = $('#welcome-modal');
+      if (!localStorage.getItem(KEY)) modal.setAttribute('open','');
+      $('#modal-close').addEventListener('click', () => {
+        if ($('#dont-show').checked) localStorage.setItem(KEY, '1');
+        modal.removeAttribute('open');
       });
-    }
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.hasAttribute('open')) modal.removeAttribute('open');
+      });
+    })();
 
-    function markLinkClicked(link) {
-      const id = getProjectId(link);
-      let clicked = JSON.parse(localStorage.getItem('clickedLinks')||'{}');
-      clicked[id] = true;
-      localStorage.setItem('clickedLinks', JSON.stringify(clicked));
-      link.classList.add('clicked');
-    }
+    // Click memory for ✓
+    (function clickMemory(){
+      const KEY = 'clickedLinks';
+      const getId = (el) => el.dataset.src || el.dataset.tutorialSrc || el.href;
+      function restore(){
+        const clicked = JSON.parse(localStorage.getItem(KEY) || '{}');
+        $$('.view-tool, .view-tutorial').forEach(a => { if (clicked[getId(a)]) a.classList.add('clicked'); });
+      }
+      function mark(el){
+        const id = getId(el);
+        const clicked = JSON.parse(localStorage.getItem(KEY) || '{}');
+        clicked[id] = true;
+        localStorage.setItem(KEY, JSON.stringify(clicked));
+        el.classList.add('clicked');
+      }
+      window.__markClicked = mark;
+      restore();
+    })();
 
-    function saveScroll() {
-      localStorage.setItem('po_projects_scroll', window.scrollY);
-    }
-    function restoreScroll() {
-      const y = +localStorage.getItem('po_projects_scroll');
-      if(y) setTimeout(()=>window.scrollTo(0, y), 1);
-    }
+    // Viewer
+    (function viewer(){
+      const wrapper = $('.video-wrapper');
+      const frame = $('#tool-frame');
+      const viewer = $('#tool-viewer');
+      const main = $('main');
+      const title = $('#tool-title');
 
-    const wrapper = document.querySelector('.video-wrapper');
-    document.querySelectorAll('.view-tool').forEach(link => link.addEventListener('click', e => {
-      e.preventDefault();
-      markLinkClicked(link);
-      saveScroll();
-      const src = link.dataset.src;
-      document.getElementById('tool-frame').src = src;
-      wrapper.classList.remove('tutorial');
-      wrapper.classList.add('tool');
-      document.querySelector('main').style.display = 'none';
-      document.getElementById('tool-viewer').style.display = 'flex';
-    }));
-    document.querySelectorAll('.view-tutorial').forEach(link => link.addEventListener('click', e => {
-      e.preventDefault();
-      markLinkClicked(link);
-      saveScroll();
-      const src = link.dataset.tutorialSrc;
-      document.getElementById('tool-frame').src = src;
-      wrapper.classList.remove('tool');
-      wrapper.classList.add('tutorial');
-      document.querySelector('main').style.display = 'none';
-      document.getElementById('tool-viewer').style.display = 'flex';
-    }));
+      function open(type, src, label){
+        if (!src) return;
+        frame.src = src;
+        title.textContent = label || '';
+        wrapper.classList.toggle('tutorial', type === 'tutorial');
+        wrapper.classList.toggle('tool', type === 'tool');
+        main.style.display = 'none';
+        viewer.style.display = 'flex';
+        localStorage.setItem('po_projects_scroll', window.scrollY);
+      }
+      function back(){
+        viewer.style.display = 'none';
+        main.style.display = '';
+        frame.src = '';
+        const y = +localStorage.getItem('po_projects_scroll');
+        if (y) setTimeout(() => window.scrollTo({top: y, behavior:'instant'}), 0);
+      }
+      $('#back-btn').addEventListener('click', back);
 
-    document.getElementById('back-btn').addEventListener('click',()=>{
-      document.getElementById('tool-viewer').style.display='none';
-      document.querySelector('main').style.display='';
-      document.getElementById('tool-frame').src='';
-      restoreScroll();
-    });
+      $$('.view-tool').forEach(a => a.addEventListener('click', e => {
+        e.preventDefault();
+        window.__markClicked(a);
+        open('tool', a.dataset.src, a.closest('.project-card')?.dataset.name || 'Tool');
+      }));
+      $$('.view-tutorial').forEach(a => a.addEventListener('click', e => {
+        e.preventDefault();
+        window.__markClicked(a);
+        open('tutorial', a.dataset.tutorialSrc, (a.closest('.project-card')?.dataset.name || '') + ' — Tutorial');
+      }));
+    })();
 
-    // On load, restore clicked state and scroll (will be empty after reload)
-    restoreClickedLinks();
-    restoreScroll();
+    // Filters (Owner + Use) with AND logic
+    (function filtering(){
+      const ownerSel = $('#owner-filter');
+      const useSel = $('#use-filter');
+      const clear = $('#clear-filter');
+      const cards = $$('#projects .project-card');
+      const empty = $('#empty-state');
+
+      function apply(){
+        const owner = (ownerSel.value || '').toLowerCase();
+        const use = (useSel.value || '').toLowerCase();
+
+        let visible = 0;
+        cards.forEach(card => {
+          const owners = (card.getAttribute('data-title') || '').toLowerCase();
+          const uses = (card.getAttribute('data-use') || '').toLowerCase();
+
+          const ownerOk = !owner || owners.includes(owner);
+          const useOk   = !use   || uses.includes(use);
+
+          const show = ownerOk && useOk;
+          card.style.display = show ? '' : 'none';
+          if (show) visible++;
+        });
+
+        empty.style.display = visible ? 'none' : '';
+        localStorage.setItem('po_owner_filter', ownerSel.value || '');
+        localStorage.setItem('po_use_filter', useSel.value || '');
+      }
+
+      ownerSel.addEventListener('change', apply);
+      useSel.addEventListener('change', apply);
+      clear.addEventListener('click', () => { ownerSel.value = ''; useSel.value = ''; apply(); });
+
+      // restore saved filters
+      const savedOwner = localStorage.getItem('po_owner_filter');
+      const savedUse = localStorage.getItem('po_use_filter');
+      if (savedOwner) ownerSel.value = savedOwner;
+      if (savedUse) useSel.value = savedUse;
+      apply();
+    })();
+
+    // Accessibility: enter key to open first action
+    (function keyboardOpen(){
+      $$('.project-card').forEach(card => {
+        card.tabIndex = 0;
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') card.querySelector('.view-tool')?.click();
+        });
+      });
+    })();
+
+    // Decode images
+    (async function decodeImages(){
+      const imgs = $$('img[decoding="async"]');
+      for (const img of imgs) { if (!img.complete) { try { await img.decode(); } catch {} } }
+    })();
   </script>
 </body>
 </html>
-
-
