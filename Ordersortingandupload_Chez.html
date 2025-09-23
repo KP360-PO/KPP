@@ -1,372 +1,235 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Order Sorting Page</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 20px;
-      background: linear-gradient(to right, #f0f4f8, #d9eaf7);
-      color: #2b2b2b;
-    }
+<meta charset="UTF-8" />
+<title>Order Sorting Page</title>
+<style>
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 20px;
+  background: linear-gradient(to right, #f0f4f8, #d9eaf7);
+  color: #2b2b2b;
+}
+h1 { text-align:center; font-size:28px; color:#003f7d; margin-bottom:20px; text-shadow:0 1px 2px rgba(0,0,0,0.1);}
+details { margin-bottom:30px; border:1px solid #ccc; border-left:6px solid #0077cc; border-radius:6px; padding:15px; background:#fff; box-shadow:0 3px 8px rgba(0,0,0,0.05);}
+summary { font-size:18px; font-weight:bold; cursor:pointer; color:#00509e; margin-bottom:10px;}
+textarea {
+  width:100%; height:140px; border:1px solid #9eaecb; border-radius:6px;
+  padding:12px; background:#fff; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom:10px; font-family:monospace; white-space:pre;
+}
+button {
+  margin:10px 10px 0 0; padding:10px 18px; background:#0077cc; color:white; border:none;
+  border-radius:6px; cursor:pointer; font-weight:bold; font-size:14px; box-shadow:0 2px 4px rgba(0,0,0,0.08);
+}
+button:hover { background:#005fa3; }
+table { width:100%; border-collapse:collapse; margin-top:20px; background:#fff; box-shadow:0 3px 6px rgba(0,0,0,0.08);}
+th, td { border:1px solid #bccce0; padding:12px; text-align:left; font-size:14px;}
+th { background:#003f7d; color:#fff; text-transform:uppercase;}
+td[contenteditable="true"] { background:#fdfaf3; transition:0.3s;}
+td[contenteditable="true"]:focus { background:#fff2cc; outline:2px solid #ffd966; }
 
-    h1 {
-      text-align: center;
-      font-size: 28px;
-      color: #003f7d;
-      margin-bottom: 30px;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    }
+/* Notes color-coding */
+td.note-amazon { background:#d1f0e1; }
+td.note-duplicate { background:#fff3bf; }
+td.note-both { background:#e3f3c1; }
 
-    details {
-      margin-bottom: 30px;
-      border: 1px solid #ccc;
-      border-left: 6px solid #0077cc;
-      border-radius: 6px;
-      padding: 15px;
-      background-color: #ffffff;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
-    }
+#summary span { display:inline-block; margin-right:20px; font-weight:bold; padding:6px 10px; border-radius:6px; background:#e2ecf7; color:#1a365d;}
+#summary span#totalQty { background:#d1f0e1; color:#22543d;}
+#summary span#amazonOrders { background:#fde68a; color:#92400e;}
 
-    summary {
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-      color: #00509e;
-      margin-bottom: 10px;
-    }
-
-    textarea {
-      width: 100%;
-      height: 120px;
-      border: 1px solid #9eaecb;
-      border-radius: 6px;
-      padding: 12px;
-      background-color: #ffffff;
-      font-size: 14px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      margin-bottom: 10px;
-    }
-
-    button {
-      margin: 10px 10px 0 0;
-      padding: 10px 18px;
-      background-color: #0077cc;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 14px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-    }
-
-    button:hover {
-      background-color: #005fa3;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background-color: #ffffff;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.08);
-    }
-
-    th, td {
-      border: 1px solid #bccce0;
-      padding: 12px;
-      text-align: left;
-      font-size: 14px;
-    }
-
-    th {
-      background-color: #003f7d;
-      color: #ffffff;
-      text-transform: uppercase;
-    }
-
-    td[contenteditable="true"] {
-      background-color: #fdfaf3;
-      transition: background-color 0.3s ease;
-    }
-
-    td[contenteditable="true"]:focus {
-      background-color: #fff2cc;
-      outline: 2px solid #ffd966;
-    }
-
-    #summary span {
-      display: inline-block;
-      margin-right: 20px;
-      font-weight: bold;
-      padding: 6px 10px;
-      border-radius: 6px;
-      background-color: #e2ecf7;
-      color: #1a365d;
-    }
-
-    #summary span#totalQty {
-      background-color: #d1f0e1;
-      color: #22543d;
-    }
-
-    #summary span#amazonOrders {
-      background-color: #fde68a;
-      color: #92400e;
-    }
-
-    p {
-      margin-top: 12px;
-      font-weight: bold;
-      font-size: 16px;
-      color: #333;
-    }
-  </style>
+.instructions { margin-bottom:30px; padding:15px; border-left:6px solid #0077cc; border-radius:6px; background:#eef6fc; box-shadow:0 3px 8px rgba(0,0,0,0.05);}
+.instructions ul { margin-left:20px;}
+</style>
 </head>
 <body>
 
-  <h1>Order Sorting Page</h1>
+<h1>Order Sorting Page</h1>
 
-  <details open>
-    <summary>Non-Mix Orders Sort</summary>
-    <textarea id="pasteArea" placeholder="Paste your data here with columns: Batch Number, Order Number, SKU1, SKU2, Qty, Extra"></textarea>
-    <button onclick="processData()">Paste and Display</button>
-    <button onclick="copyTableData()">Copy Processed Data</button>
+<!-- Instructions Section (Collapsible) -->
+<details open>
+  <summary style="font-size:20px; font-weight:bold; color:#003f7d;">How This Processor Works</summary>
+  <div class="instructions">
+    <p>This processor is divided into two sections: <strong>Non-Mix Orders</strong> and <strong>Mix Orders</strong>. Follow the steps below to use it:</p>
 
-    <table id="resultTable">
-      <thead>
-        <tr>
-          <th>Order Number</th>
-          <th>SKU</th>
-          <th>Qty</th>
-          <th>Notes</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <h3>Non-Mix Orders</h3>
+    <ul>
+      <li>Paste your data into the textarea. The first row shows the column headers for guidance.</li>
+      <li>Click <strong>Paste and Display</strong> to process the data.</li>
+      <li>The table will show Order Number, SKU, Quantity, and Notes.</li>
+      <li>Duplicate SKUs are automatically detected and labeled as "Duplicate SKU".</li>
+      <li>Total quantity and total Amazon orders are displayed below the table.</li>
+<li>Notes column is color-coded: <span style="background:#d1f0e1;">Amazon=green</span>, <span style="background:#fff3bf;">Duplicate=yellow</span>, <span style="background:#e3f3c1;">Both</span>.</li>
+      <li>Use <strong>Copy Processed Data</strong> to copy the table to clipboard.</li>
+      <li>Click <strong>Reset</strong> to clear the table and reset the textarea.</li>
+    </ul>
 
-    <div id="summary">
-      <span>Total Qty: <span id="totalQty">0</span></span>
-      <span>Total Amazon Shipping Orders: <span id="amazonOrders">0</span></span>
-    </div>
-  </details>
+    <h3>Mix Orders</h3>
+    <ul>
+      <li>Paste your 6-column data into the textarea. Headers are shown for guidance.</li>
+      <li>Click <strong>Display in Table</strong> to process the data.</li>
+      <li>The table will show Order Number, SKU, Quantity, and Notes.</li>
+      <li>Only Mix Order Numbers will show and extensions will be removed automatically.</li>
+      <li>Total quantity is displayed below the table.</li>
+      <li>Use <strong>Copy Processed Data</strong> to copy the table to clipboard.</li>
+      <li>Click <strong>Reset</strong> to clear the table and reset the textarea.</li>
+    </ul>
+  </div>
+</details>
 
-  <details>
-    <summary>Mix Orders Page (Expecting 6 Columns)</summary>
-    <textarea id="pasteInput" placeholder="Paste your 6-column data here (e.g., Batch Number, Order Number, SKU1, SKU2, Qty, Extra)..."></textarea>
-    <button onclick="processDataMix()">Display in Table</button>
-    <button onclick="copyTableDataMix()">Copy Processed Data</button>
+<!-- Non-Mix Orders -->
+<details open>
+  <summary>Non-Mix Orders Sort</summary>
+  <textarea id="pasteArea">Batch Number    (blank)    Order Number    SKU1    SKU2    Qty
+</textarea>
+  <button onclick="processData()">Paste and Display</button>
+  <button onclick="copyTableData()">Copy Processed Data</button>
+  <button onclick="resetNonMix()">Reset</button>
+  <table id="resultTable">
+    <thead>
+      <tr>
+        <th contenteditable="false">Order Number</th>
+        <th contenteditable="false">SKU</th>
+        <th contenteditable="false">Qty</th>
+        <th contenteditable="false">Notes</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div id="summary">
+    <span>Total Qty: <span id="totalQty">0</span></span>
+    <span>Total Amazon Shipping Orders: <span id="amazonOrders">0</span></span>
+  </div>
+</details>
 
-    <table id="outputTable">
-      <thead>
-        <tr>
-          <th>Order Number</th>
-          <th>SKU</th>
-          <th>Qty</th>
-          <th>notes</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <p><strong>Total Qty:</strong> <span id="totalQtyMix">0</span></p>
-  </details>
+<!-- Mix Orders -->
+<details>
+  <summary>Mix Orders Page (Expecting 6 Columns)</summary>
+  <textarea id="pasteInput">Batch Number    (blank)    Order Number    SKU1    SKU2    Qty
+</textarea>
+  <button onclick="processDataMix()">Display in Table</button>
+  <button onclick="copyTableDataMix()">Copy Processed Data</button>
+  <button onclick="resetMix()">Reset</button>
+  <table id="outputTable">
+    <thead>
+      <tr>
+        <th contenteditable="false">Order Number</th>
+        <th contenteditable="false">SKU</th>
+        <th contenteditable="false">Qty</th>
+        <th contenteditable="false">Notes</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <p><strong>Total Qty:</strong> <span id="totalQtyMix">0</span></p>
+</details>
 
-  <script>
-    function detectColumns(headerRow) {
-      const lowerHeader = headerRow.map(col => col.toLowerCase());
-      return {
-        orderIndex: lowerHeader.findIndex(col => col.includes("order number")),
-        skuIndex: lowerHeader.findIndex(col => col.includes("sku1")),
-        qtyIndex: lowerHeader.findIndex(col => col.includes("qty") || col.includes("quantity"))
-      };
-    }
+<script>
+function detectColumns(headerRow){
+  const lower=headerRow.map(c=>c.toLowerCase());
+  return {
+    orderIndex: lower.findIndex(c=>c.includes("order number")),
+    skuIndex: lower.findIndex(c=>c.includes("sku1")),
+    qtyIndex: lower.findIndex(c=>c.includes("qty")||c.includes("quantity"))
+  };
+}
 
-    function processData() {
-      const input = document.getElementById("pasteArea").value.trim();
-      const rows = input.split("\n");
-      const tableBody = document.getElementById("resultTable").querySelector("tbody");
-      const totalQtyEl = document.getElementById("totalQty");
-      const amazonOrdersEl = document.getElementById("amazonOrders");
-      tableBody.innerHTML = "";
-      let totalQty = 0;
-      const amazonOrderMap = new Set();
-      const dataMap = {};
-      const omittedSet = new Set();
+/* -------- Non-Mix Orders -------- */
+function processData(){
+  const input=document.getElementById("pasteArea").value.trim();
+  const rows=input.split("\n");
+  const tbody=document.querySelector("#resultTable tbody");
+  tbody.innerHTML="";
+  if(rows.length<=1) return;
 
-      if (rows.length === 0) return;
+  const headerCells=rows[0].split(/\t|,|\s{2,}/).map(c=>c.trim());
+  const {orderIndex, skuIndex, qtyIndex}=detectColumns(headerCells);
+  const dataMap={}; const amazonOrders=new Set(); const omitOrders=new Set();
+  const keywordsToOmit=["oos","invalid","RO","cancel","buyer cancelled","cancelled","expensive","buyer","moved","move","mix","buyer canceled","buyercanceled","MIX"];
+  let lastOrder=""; let totalQty=0;
 
-      const headerCells = rows[0].split(/\t|,|\s{2,}/).map(cell => cell.trim());
-      const { orderIndex, skuIndex, qtyIndex } = detectColumns(headerCells);
-      const keywordsToOmit = [
-        "oos", "invalid", "RO", "cancel", "buyer cancelled", "cancelled", "expensive",
-        "buyer", "moved", "move", "mix", "buyer canceled", "buyercanceled", "MIX"
-      ];
+  // Mark orders to omit
+  for(let i=1;i<rows.length;i++){
+    const cells=rows[i].split(/\t|,|\s{2,}/).map(c=>c.trim());
+    if(cells.length<=Math.max(orderIndex,skuIndex,qtyIndex)) continue;
+    const order=cells[orderIndex]||lastOrder; lastOrder=order;
+    const rowText=cells.join(" ").toLowerCase();
+    if(keywordsToOmit.some(k=>rowText.includes(k.toLowerCase()))) omitOrders.add(order);
+  }
 
-      let lastOrderNum = "";
+  lastOrder="";
+  for(let i=1;i<rows.length;i++){
+    const cells=rows[i].split(/\t|,|\s{2,}/).map(c=>c.trim());
+    if(cells.length<=Math.max(orderIndex,skuIndex,qtyIndex)) continue;
+    let orderNum=cells[orderIndex]||lastOrder; lastOrder=orderNum;
+    if(omitOrders.has(orderNum)) continue;
+    const sku=cells[skuIndex]||""; const qty=parseFloat(cells[qtyIndex])||0;
+    const isAmazon=cells.join(" ").toLowerCase().includes("amazon");
+    const key=orderNum+"||"+sku;
+    if(!dataMap[key]) dataMap[key]={orderNum,sku,qty:0,count:0,isAmazon};
+    dataMap[key].qty+=qty; dataMap[key].count++; if(isAmazon) amazonOrders.add(orderNum);
+    totalQty+=qty;
+  }
 
-      for (let i = 1; i < rows.length; i++) {
-        const cells = rows[i].split(/\t|,|\s{2,}/).map(cell => cell.trim());
-        const rowText = cells.join(" ").toLowerCase();
-        if (cells.length <= Math.max(orderIndex, skuIndex, qtyIndex)) continue;
+  Object.values(dataMap).forEach(({orderNum,sku,qty,count,isAmazon})=>{
+    const tr=document.createElement("tr");
+    [orderNum,sku,qty].forEach(val=>{ const td=document.createElement("td"); td.contentEditable=true; td.textContent=val; tr.appendChild(td); });
+    const tdNotes=document.createElement("td"); tdNotes.contentEditable=true;
+    let note=""; if(isAmazon) note="Amazon Shipping"; if(count>1) note+=(note?", ":"")+"Duplicate SKU"; tdNotes.textContent=note;
+    if(isAmazon && count>1) tdNotes.className="note-both"; else if(isAmazon) tdNotes.className="note-amazon"; else if(count>1) tdNotes.className="note-duplicate";
+    tr.appendChild(tdNotes); tbody.appendChild(tr);
+  });
+  document.getElementById("totalQty").textContent=totalQty;
+  document.getElementById("amazonOrders").textContent=amazonOrders.size;
+}
 
-        let orderNum = cells[orderIndex] || "";
-        const sku = cells[skuIndex] || "";
-        const qty = parseFloat(cells[qtyIndex]) || 0;
-        const isAmazon = rowText.includes("amazon");
+function copyTableData(){
+  const table=document.getElementById("resultTable"); let text="";
+  for(let row of table.rows){ const rowData=[]; for(let cell of row.cells) rowData.push(cell.innerText); text+=rowData.join("\t")+"\n"; }
+  navigator.clipboard.writeText(text).then(()=>alert("Processed data copied."),()=>alert("Failed to copy."));
+}
+function resetNonMix(){
+  document.getElementById("pasteArea").value="Batch Number    (blank)    Order Number    SKU1    SKU2    Qty\n";
+  document.querySelector("#resultTable tbody").innerHTML="";
+  document.getElementById("totalQty").textContent=0;
+  document.getElementById("amazonOrders").textContent=0;
+}
 
-        if (orderNum !== "") {
-          lastOrderNum = orderNum;
-        } else {
-          orderNum = lastOrderNum;
-        }
+/* -------- Mix Orders -------- */
+function cleanOrderNumber(orderNumber){ const idx=orderNumber.lastIndexOf("-"); return idx!==-1?orderNumber.substring(0,idx):orderNumber; }
+function processDataMix(){
+  const input=document.getElementById("pasteInput").value.trim();
+  const rows=input.split("\n"); const tbody=document.querySelector("#outputTable tbody"); tbody.innerHTML="";
+  if(rows.length<=1) return; let totalQty=0;
+  const header=rows[0].split(/\t|,|\s{2,}/).map(c=>c.trim().toLowerCase());
+  const orderIndex=header.findIndex(h=>h.includes("order"));
+  const skuIndex=header.findIndex(h=>h.includes("sku1"));
+  const qtyIndex=header.findIndex(h=>h.includes("qty")||h.includes("quantity"));
 
-        if (/^RO/i.test(orderNum)) continue;
-
-        const key = `${orderNum}||${sku}`;
-        const shouldOmit = keywordsToOmit.some(keyword => rowText.includes(keyword.toLowerCase()));
-        if (shouldOmit) {
-          omittedSet.add(key);
-          continue;
-        }
-        if (omittedSet.has(key)) continue;
-
-        if (!dataMap[key]) {
-          dataMap[key] = {
-            orderNum,
-            sku,
-            qty: 0,
-            isAmazon,
-            count: 0
-          };
-        }
-        dataMap[key].qty += qty;
-        dataMap[key].count++;
-        if (isAmazon) amazonOrderMap.add(orderNum);
-        totalQty += qty;
-      }
-
-      const amazonOrderNums = new Set(amazonOrderMap);
-
-      Object.values(dataMap).forEach(({ orderNum, sku, qty, count }) => {
-        const tr = document.createElement("tr");
-
-        [orderNum, sku, qty.toString()].forEach(val => {
-          const td = document.createElement("td");
-          td.contentEditable = "true";
-          td.textContent = val;
-          tr.appendChild(td);
-        });
-
-        const tdNotes = document.createElement("td");
-        tdNotes.contentEditable = "true";
-
-        let note = "";
-        if (amazonOrderNums.has(orderNum)) note = "Amazon Shipping";
-        if (count > 1) note += (note ? ", " : "") + "Duplicate SKU";
-
-        tdNotes.textContent = note;
-        tr.appendChild(tdNotes);
-
-        tableBody.appendChild(tr);
-      });
-
-      totalQtyEl.textContent = totalQty;
-      amazonOrdersEl.textContent = amazonOrderMap.size;
-    }
-
-    function copyTableData() {
-      const table = document.getElementById("resultTable");
-      let text = "";
-      for (let row of table.rows) {
-        let rowData = [];
-        for (let cell of row.cells) {
-          rowData.push(cell.innerText);
-        }
-        text += rowData.join("\t") + "\n";
-      }
-      navigator.clipboard.writeText(text).then(() => {
-        alert("Processed data copied to clipboard.");
-      }, () => {
-        alert("Failed to copy data.");
-      });
-    }
-
-    function cleanOrderNumber(orderNumber) {
-      const lastDashIndex = orderNumber.lastIndexOf("-");
-      if (lastDashIndex !== -1) {
-        return orderNumber.substring(0, lastDashIndex);
-      }
-      return orderNumber;
-    }
-
-    function processDataMix() {
-      const input = document.getElementById("pasteInput").value.trim();
-      const rows = input.split("\n");
-      const tbody = document.querySelector("#outputTable tbody");
-      const totalQtyDisplay = document.getElementById("totalQtyMix");
-      tbody.innerHTML = "";
-
-      if (rows.length === 0) return;
-
-      const header = rows[0].split(/\t|,|\s{2,}/).map(h => h.trim().toLowerCase());
-      const orderIndex = header.findIndex(h => h.includes("order"));
-      const skuIndex = header.findIndex(h => h.includes("sku1"));
-      const qtyIndex = header.findIndex(h => h.includes("qty") || h.includes("quantity"));
-
-      let totalQty = 0;
-
-      for (let i = 1; i < rows.length; i++) {
-        const cells = rows[i].split(/\t|,|\s{2,}/).map(c => c.trim());
-        if (cells.length <= Math.max(orderIndex, skuIndex, qtyIndex)) continue;
-
-        let orderNumber = cells[orderIndex];
-        const sku = cells[skuIndex];
-        const qty = cells[qtyIndex];
-        const notes = "";
-
-        const hasLetters = /[a-zA-Z]/.test(orderNumber);
-        const containsRO = orderNumber.toUpperCase().includes("RO");
-        if (!hasLetters || containsRO) continue;
-
-        orderNumber = cleanOrderNumber(orderNumber);
-
-        const tr = document.createElement("tr");
-        [orderNumber, sku, qty, notes].forEach(text => {
-          const td = document.createElement("td");
-          td.contentEditable = "true";
-          td.textContent = text;
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-
-        const numericQty = parseFloat(qty);
-        if (!isNaN(numericQty)) {
-          totalQty += numericQty;
-        }
-      }
-
-      totalQtyDisplay.textContent = totalQty;
-    }
-
-    function copyTableDataMix() {
-      const table = document.getElementById("outputTable");
-      let text = "";
-      for (let row of table.rows) {
-        const rowData = [];
-        for (let cell of row.cells) {
-          rowData.push(cell.innerText);
-        }
-        text += rowData.join("\t") + "\n";
-      }
-      navigator.clipboard.writeText(text).then(() => {
-        alert("Processed data copied to clipboard.");
-      }).catch(() => {
-        alert("Failed to copy data.");
-      });
-    }
-  </script>
+  for(let i=1;i<rows.length;i++){
+    const cells=rows[i].split(/\t|,|\s{2,}/).map(c=>c.trim());
+    if(cells.length<=Math.max(orderIndex,skuIndex,qtyIndex)) continue;
+    let orderNumber=cells[orderIndex]; const sku=cells[skuIndex]; const qty=cells[qtyIndex]; let notes="";
+    const hasLetters=/[a-zA-Z]/.test(orderNumber);
+    const containsRO=orderNumber.toUpperCase().includes("RO");
+    if(!hasLetters||containsRO) continue; orderNumber=cleanOrderNumber(orderNumber);
+    const tr=document.createElement("tr");
+    [orderNumber,sku,qty,notes].forEach(t=>{ const td=document.createElement("td"); td.contentEditable=true; td.textContent=t; tr.appendChild(td); });
+    tbody.appendChild(tr); const numericQty=parseFloat(qty); if(!isNaN(numericQty)) totalQty+=numericQty;
+  }
+  document.getElementById("totalQtyMix").textContent=totalQty;
+}
+function copyTableDataMix(){
+  const table=document.getElementById("outputTable"); let text="";
+  for(let row of table.rows){ const rowData=[]; for(let cell of row.cells) rowData.push(cell.innerText); text+=rowData.join("\t")+"\n"; }
+  navigator.clipboard.writeText(text).then(()=>alert("Processed data copied."),()=>alert("Failed to copy."));
+}
+function resetMix(){
+  document.getElementById("pasteInput").value="Batch Number    (blank)    Order Number    SKU1    SKU2    Qty\n";
+  document.querySelector("#outputTable tbody").innerHTML="";
+  document.getElementById("totalQtyMix").textContent=0;
+}
+</script>
 
 </body>
 </html>
