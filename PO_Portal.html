@@ -79,7 +79,10 @@
 .empty {padding: 2.25rem; text-align: center; color: var(--muted);border: 2px dashed var(--border); border-radius: var(--radius);background: color-mix(in oklab, var(--card), var(--bg) 25%);} 
     :focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(var(--ring)/.25); border-radius: 10px; }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
-  </style>
+  
+/* Lock outer page scroll when tool viewer is open */
+body.lock-scroll { overflow: hidden; }
+</style>
 </head>
 <body>
   <!-- WELCOME MODAL -->
@@ -126,7 +129,7 @@
       <span></span>
     </div>
     <div class="video-wrapper">
-      <iframe id="tool-frame" src="" allowfullscreen scrolling="no"></iframe>
+      <iframe id="tool-frame" src="" allowfullscreen scrolling="auto"></iframe>
     </div>
   </div>
 
@@ -495,34 +498,38 @@
 
       function open(type, src, label){
         __setDynamicHeights();
-        // page scroll mode for tools
-        const wrap = document.querySelector('.video-wrapper');
-        const frame = document.getElementById('tool-frame');
-        if(type === 'tool'){
-          wrap?.classList.add('page-scroll');
-          document.documentElement.style.setProperty('--tool-height', '1600px');
-        } else {
-          wrap?.classList.remove('page-scroll');
-          document.documentElement.style.removeProperty('--tool-height');
-        }
-        // no longer locking page scroll
+
+        // Ensure iframe can scroll itself
+        try { document.getElementById('tool-frame')?.setAttribute('scrolling','auto'); } catch {}
+
+        // Lock the outer page scroll and jump to top
+        try { localStorage.setItem('po_projects_scroll', window.scrollY); } catch {}
+        document.body.classList.add('lock-scroll');
+        try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch {}
+
         if (!src) return;
         frame.src = src;
         title.textContent = label || '';
         wrapper.classList.toggle('tutorial', type === 'tutorial');
         wrapper.classList.toggle('tool', type === 'tool');
+
+        // Show the viewer, hide the grid
         main.style.display = 'none';
         viewer.style.display = 'flex';
-        localStorage.setItem('po_projects_scroll', window.scrollY);
       }
       function back(){
         __setDynamicHeights();
-        // no longer locking page scroll
+
+        // Hide viewer, show grid
         viewer.style.display = 'none';
         main.style.display = '';
         frame.src = '';
-        const y = +localStorage.getItem('po_projects_scroll');
-        if (y) setTimeout(() => window.scrollTo({top: y, behavior:'instant'}), 0);
+
+        // Restore outer page scroll position and unlock
+        let y = 0;
+        try { y = +localStorage.getItem('po_projects_scroll') || 0; } catch {}
+        document.body.classList.remove('lock-scroll');
+        try { setTimeout(() => window.scrollTo({ top: y, behavior: 'instant' }), 0); } catch {}
       }
       $('#back-btn').addEventListener('click', back);
 
