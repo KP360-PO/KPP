@@ -26,7 +26,7 @@
     .chip.ok{border-color:#16a34a;color:#166534;background:#ecfdf5}
     .chip.warn{border-color:#f59e0b;color:#92400e;background:#fffbeb}
     .chip.err{border-color:#ef4444;color:#991b1b;background:#fef2f2}
-    .table-wrap{ width:100%; height:65vh; overflow:auto;border:1px solid var(--border); border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--panel-2)); box-shadow:0 6px 18px rgba(0,0,0,.12); }
+    .table-wrap{ width:100%; height:auto; overflow:auto;border:1px solid var(--border); border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--panel-2)); box-shadow:0 6px 18px rgba(0,0,0,.12); }
     table{width:100%; border-collapse:separate; border-spacing:0}
     thead th{ position:sticky; top:0; z-index:5; background:var(--panel); color:var(--text);
       text-align:left; padding:10px 12px; font-weight:600; font-size:12px; letter-spacing:.2px; border-bottom:1px solid var(--border); white-space:nowrap; }
@@ -419,26 +419,43 @@ td.kp-hl-red, td.kp-hl-yellow, tr.kp-row-warn > td { position: relative; }
       return /^[A-Z]{2}\d{7}$/.test(clean);
     }
     function transformCFPartsByVendor(itemSku, parts){
-      const sku = String(itemSku||'').toUpperCase();
-      if (sku.startsWith('LLX')){
-        return parts.map(p=>{
-          const raw = String(p||'').trim();
-          if (!raw) return raw;
-          return isPartslinkId(raw) ? ('LKQ-' + raw.replace(/^LKQ-?/i,'')) : raw;
-        });
-      }
-      if (sku.startsWith('OLX')){
-        return parts.map(p=>{
-          let raw = String(p||'').trim();
-          if (!raw) return raw;
-          raw = raw.replace(/\b(?:MOP|ACD)-?/gi,'').replace(/^\s*-+/, '').trim();
-          if (!raw) return raw;
-          if (!/^TON-/i.test(raw)) raw = 'TON-' + raw;
-          return raw;
-        });
-      }
-      return parts;
+  const sku = String(itemSku || '').toUpperCase(); // kept but unused
+
+  // 1) ALWAYS enforce LKQ- for anything that looks like a Partslink ID.
+  let out = parts.map(p => {
+    const raw = String(p || '').trim();
+    if (!raw) return raw;
+
+    const withoutLkq = raw.replace(/^LKQ-?/i, '').trim();
+    if (isPartslinkId(withoutLkq)) {
+      return 'LKQ-' + withoutLkq;
     }
+    return raw;
+  });
+
+  // 2) ALWAYS enforce TON- for values that look like TONSA-style codes,
+  //    but only if they are NOT Partslink (LKQ already handled above).
+  //    Normalize: strip MOP-/ACD-/extra dashes, then ensure TON- prefix.
+  out = out.map(p => {
+    let raw = String(p || '').trim();
+    if (!raw) return raw;
+
+    // If it's Partslink (possibly already normalized to LKQ-), leave it alone.
+    const noLkq = raw.replace(/^LKQ-?/i, '').trim();
+    if (isPartslinkId(noLkq)) return raw;
+
+    // Heuristics for "Tonsa-ish" CFs: starts with TON-/MOP-/ACD-
+    const looksTonsaish = /^(?:TON|MOP|ACD)-?/i.test(raw);
+    if (!looksTonsaish) return raw;
+
+    // Normalize to TON-
+    raw = raw.replace(/^(?:TON|MOP|ACD)-?/i, '').replace(/^\s*-+/, '').trim();
+    if (!raw) return raw;
+    return 'TON-' + raw;
+  });
+
+  return out;
+}
 
     // === Multi-ship helpers ===
     function looksMultiShip(row){
@@ -461,9 +478,10 @@ td.kp-hl-red, td.kp-hl-yellow, tr.kp-row-warn > td { position: relative; }
       const cfPartsRaw = [baseRow["Custom Field 1"], baseRow["Custom Field 2"]]
         .map(v => (v || '').toString().trim())
         .filter(v => v.length > 0);
+      const hasJWL = cfPartsRaw.some(v => containsCodeAlphaBoundary(v, 'JWL'));
 
       const cfPartsProcessed = transformCFPartsByVendor(baseRow["Item SKU"], cfPartsRaw)
-        .filter(v => v && v.length > 0)
+        .filter(v => (v && v.length > 0) && !containsCodeAlphaBoundary(v, 'JWL'))
         .sort((a,b) => a.localeCompare(b, undefined, {numeric:true, sensitivity:'base'}));
 
       const cfCounts = {};
@@ -493,6 +511,7 @@ td.kp-hl-red, td.kp-hl-yellow, tr.kp-row-warn > td { position: relative; }
       });
 
       // Shipping lines (single or multi)
+if (!hasJWL) {
       const multiShip = looksMultiShip(baseRow);
       if (multiShip){
         const rates = splitCsv(baseRow["Rate"]);
@@ -526,6 +545,8 @@ td.kp-hl-red, td.kp-hl-yellow, tr.kp-row-warn > td { position: relative; }
           "Memo": orderMemoDefault
         });
       }
+}
+
       return lines;
     }
 
@@ -1200,5 +1221,26 @@ td.kp-hl-red input, td.kp-hl-yellow input { background-color: inherit !important
   obs.observe(document.documentElement||document.body, {subtree:true, childList:true, attributes:true});
 })();
 </script>
+<style>
+  /* Make only the table area scroll without using a fixed height */
+  .shell { min-height: 100vh; display: flex; flex-direction: column; }
+  .header, .controls { flex: 0 0 auto; }
+  .table-wrap { flex: 1 1 auto; min-height: 0; }
+</style>
+
+<style>
+  /* === Only the table scrolls; the page does not === */
+  html, body { height: 100%; overflow: hidden; }
+  .shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .header, .controls { flex: 0 0 auto; }
+  .table-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; height: auto; }
+</style>
+<style>
+  /* Page-level bottom spacing (not table): flex spacer so only the table scrolls */
+  .shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .header, .controls { flex: 0 0 auto; }
+  .table-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; height: auto; }
+  .shell::after { content: ""; flex: 0 0 16px; }
+</style>
 </body>
 </html>
