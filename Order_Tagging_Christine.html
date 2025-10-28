@@ -19,6 +19,9 @@ textarea{width:100%;height:140px;padding:10px;font-family:monospace;font-size:14
 .alert .list.collapsed{max-height:60px;overflow:hidden;position:relative}.alert .list.collapsed::after{content:"";position:absolute;left:0;right:0;bottom:0;height:24px;background:linear-gradient(to bottom,rgba(255,255,255,0),rgba(255,255,255,.85))}
 .alert .toggle{display:inline-block;margin-top:6px;font-size:12px;cursor:pointer;text-decoration:underline}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@media(max-width:900px){.container{grid-template-columns:1fr}}
+.output-card {position: relative;}
+.copy-btn {position: absolute;top: 12px;right: 20px;margin: 0;align-self: auto;}
+.output-card h3 {padding-right: 140px;}
 </style></head><body>
 <div class="wrapper">
   <div class="header"><h1>Order Tagging</h1><div class="byline">By: Christine Anastacio</div></div>
@@ -31,8 +34,8 @@ textarea{width:100%;height:140px;padding:10px;font-family:monospace;font-size:14
   <div id="pair-plx-alert" class="alert"></div>
   <div id="total">Total Orders: 0</div>
   <div class="container">
-    <div class="card output-card"><h3>Formatted Output</h3><button id="copyFormattedBtn" class="copy-btn" onclick="copyOutput()">Copy Formatted</button><div id="output"></div></div>
-    <div class="card output-card"><h3>Order Numbers</h3><button id="copyOrdersBtn" class="copy-btn" onclick="copyOrders()">Copy Order Numbers</button><div id="ordersOutput"></div></div>
+    <div class="card output-card"><h3>Formatted Output</h3><button id="copyFormattedBtn" class="copy-btn" onclick="copyOutput()">Copy</button><div id="output"></div></div>
+    <div class="card output-card"><h3>Order Numbers</h3><button id="copyOrdersBtn" class="copy-btn" onclick="copyOrders()">Copy</button><div id="ordersOutput"></div></div>
   </div>
 </div>
 <script>
@@ -84,8 +87,8 @@ function formatOrders(){
   document.getElementById("ordersOutput").textContent=lastOrders.join("\n");
   document.getElementById("total").textContent="Total Orders: "+results.length;
 }
-function copyOutput(){const b=document.getElementById("copyFormattedBtn"),o=b.textContent,out=document.getElementById("output"),range=document.createRange(),sel=window.getSelection();range.selectNodeContents(out);sel.removeAllRanges();sel.addRange(range);document.execCommand("copy");sel.removeAllRanges();b.textContent="Formatted Copied!";setTimeout(()=>b.textContent=o,500)}
-function copyOrders(){const b=document.getElementById("copyOrdersBtn"),o=b.textContent,t=lastOrders.join("\r\n"),ta=document.createElement("textarea");ta.style.position="absolute";ta.style.left="-9999px";ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);b.textContent="Order Numbers Copied!";setTimeout(()=>b.textContent=o,500)}
+function copyOutput(){const b=document.getElementById("copyFormattedBtn"),o=b.textContent,out=document.getElementById("output"),range=document.createRange(),sel=window.getSelection();range.selectNodeContents(out);sel.removeAllRanges();sel.addRange(range);document.execCommand("copy");sel.removeAllRanges();b.textContent="Copied!";setTimeout(()=>b.textContent=o,500)}
+function copyOrders(){const b=document.getElementById("copyOrdersBtn"),o=b.textContent,t=lastOrders.join("\r\n"),ta=document.createElement("textarea");ta.style.position="absolute";ta.style.left="-9999px";ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);b.textContent="Copied!";setTimeout(()=>b.textContent=o,500)}
 function resetAll(){document.getElementById("input").value="";document.getElementById("output").textContent="";document.getElementById("ordersOutput").textContent="";document.getElementById("total").textContent="Total Orders: 0";["mm-alert","removed-alert","pair-plx-alert"].forEach(id=>{const el=document.getElementById(id);el.style.display="none";el.dataset.visible="false"});lastOrders=[]}
 </script>
 </body></html>
