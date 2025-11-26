@@ -260,6 +260,11 @@
       <div id="suggestion" class="note" style="display:none"></div>
       <div id="results" style="margin-top:6px"></div>
     </section>
+
+    <!-- Author credit -->
+    <div style="margin-top:18px; font-size:11px; color:#94a3b8; text-align:center;">
+      DIM Calculator • Created by Christine Anastacio
+    </div>
   </div>
 
 <script>
@@ -485,9 +490,11 @@
     const poly=(pts,fill,stroke,w=1)=>{ ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x,pts[i].y); ctx.closePath(); if(fill){ctx.fillStyle=fill; ctx.fill();} if(stroke){ctx.strokeStyle=stroke; ctx.lineWidth=w; ctx.stroke();} };
     const text=(s,x,y,c='#64748b',size=12,align='center')=>{ ctx.fillStyle=c; ctx.font=`${size}px ui-sans-serif, system-ui`; ctx.textAlign=align; ctx.textBaseline='middle'; ctx.fillText(s,x,y); };
 
-    poly([A2,B2,C2,D2],'rgba(99,102,241,0.06)','#e2e8f0',1);
-    poly([B,B2,C2,C],'rgba(14,165,233,0.06)','#e2e8f0',1);
-    poly([A,A2,D2,D],'rgba(16,185,129,0.06)','#e2e8f0',1);
+    const A2B2C2D2=[A2,B2,C2,D2], BB2C2C=[B,B2,C2,C], AA2D2D=[A,A2,D2,D];
+
+    poly(A2B2C2D2,'rgba(99,102,241,0.06)','#e2e8f0',1);
+    poly(BB2C2C,'rgba(14,165,233,0.06)','#e2e8f0',1);
+    poly(AA2D2D,'rgba(16,185,129,0.06)','#e2e8f0',1);
 
     [ [A,B],[B,C],[C,D],[D,A],[A,A2],[B,B2],[C,C2],[D,D2],[A2,B2],[B2,C2],[C2,D2],[D2,A2] ]
       .forEach(seg=>line(seg[0],seg[1],'#0f172a',1));
