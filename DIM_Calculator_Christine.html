@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DIM Calculator</title>
+<meta name="author" content="Christine Anastacio" />
+<style>
+  :root{
+    --bg:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --card:#ffffff; --accent:#2563eb;
+    --radius:12px; --gap:12px; --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+  }
+  html,body{height:100%}
+  body{
+    margin:0;
+    font:14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    background:var(--bg);
+    color:var(--ink)
+  }
+  .wrap{max-width:980px; margin:36px auto 96px; padding:0 20px}
+  header{margin-bottom:18px}
+  h1{margin:0; font-size:20px; font-weight:600; letter-spacing:.2px}
+  .sub{color:var(--muted); font-size:12px; margin-top:6px}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    box-shadow:var(--shadow)
+  }
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+
+  .controls{
+    display:grid;
+    gap:12px;
+    grid-template-columns:repeat(4, minmax(140px, 1fr));
+    margin-top:14px
+  }
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    margin:0 0 6px
+  }
+  input[type="number"]{
+    width:100%;
+    box-sizing:border-box;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#fff;
+    color:#0f172a;
+    font-size:13px;
+  }
+  input[type="number"]::placeholder{color:#9aa6b2}
+
+  .btn{
+    appearance:none;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:14px;
+    cursor:pointer;
+    transition:filter .16s ease, transform .04s ease
+  }
+  .btn:hover{filter:brightness(1.03)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{border-color:var(--accent); color:#fff; background:var(--accent)}
+
+  /* Items table */
+  .items table{width:100%; border-collapse:collapse}
+  .items th,.items td{
+    padding:8px 6px;
+    border-bottom:1px solid var(--line);
+    font-size:13px
+  }
+  .items th{
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    font-weight:600;
+    font-size:11px
+  }
+
+  /* Results */
+  table.results{width:100%; border-collapse:collapse}
+  table.results th, table.results td{
+    padding:12px 8px;
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+    vertical-align:top
+  }
+  table.results th{
+    color:var(--muted);
+    text-transform:uppercase;
+    font-size:11px;
+    letter-spacing:.06em
+  }
+  tr.win{background:rgba(37,99,235,.06)}
+  tr.win td{font-weight:700}
+
+  /* Collapsible 3D inside table */
+  details.viz-det{margin:0}
+  details.viz-det > summary{
+    list-style:none;
+    cursor:pointer;
+    user-select:none;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    font-size:12px;
+    color:var(--muted);
+  }
+  details.viz-det > summary::-webkit-details-marker{display:none}
+  details.viz-det[open] > summary{color:#0f172a; background:#f8fafc}
+  .viz-box{padding:10px 0}
+  .viz-canvas{
+    width:100%;
+    height:220px;
+    display:block;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#fff
+  }
+  .viz-caption{color:var(--muted); font-size:12px; margin-top:6px}
+
+  .pill{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    color:var(--muted);
+    font-size:12px
+  }
+
+  details{margin-top:12px}
+  details>summary{
+    list-style:none;
+    cursor:pointer;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    color:var(--muted);
+    user-select:none;
+    outline:none
+  }
+  details[open]>summary{color:var(--ink); background:rgba(2,6,23,.02)}
+  details>summary::-webkit-details-marker{display:none}
+  .hint{color:var(--muted); font-size:12px}
+
+  #status{color:var(--muted); font-size:13px}
+  .danger{color:#dc2626}
+  .warn{color:#b45309}
+  .note{color:var(--muted); font-size:13px; margin-top:8px}
+  
+  /* Status pill */
+  #status{
+    font-size:13px;
+    margin-left:12px;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#fee2e2;
+    color:#b91c1c;
+    font-weight:500;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  #status .danger::before{content:"⛔";font-size:14px;}
+
+  /* Note / tips */
+  .note{
+    font-size:13px;
+    margin-top:10px;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:#f8fafc;
+    color:var(--ink);
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    line-height:1.4;
+  }
+  .note::before{content:"💡";flex:none;margin-top:1px;}
+  .note.warn{border-color:#f97316;background:#fffbeb;color:#92400e;}
+  .note.warn::before{content:"⚠️";}
+  .note.danger{border-color:#ef4444;background:#fef2f2;color:#b91c1c;}
+  .note.danger::before{content:"⛔";}
+
+  .danger{ color:#b91c1c; font-weight:600; }
+  .warn{ color:#b45309; font-weight:500; }
+
+  @media (max-width:640px){
+    .controls{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>DIM Calculator</h1>
+      <div class="sub">
+        The tool tests packings of your item dimensions, filters out boxes over the girth limit,
+        and recommends the carton with the lowest billable weight (DIM vs actual).
+      </div>
+    </header>
+
+    <!-- Items -->
+    <section class="card" aria-label="Items">
+      <div class="row" style="justify-content:space-between; margin-bottom:8px">
+        <div class="row">
+          <button class="btn primary" id="addItemBtn">+ Add Item</button>
+          <button class="btn" id="clearItemsBtn">Clear</button>
+          <span id="status" role="status" aria-live="polite"></span>
+        </div>
+        <span class="hint">All dimensions in inches. Weight in pounds.</span>
+      </div>
+
+      <div class="items" id="itemsWrap"></div>
+
+      <details>
+        <summary>Advanced Options</summary>
+        <div class="controls" role="group" aria-label="Advanced Options">
+          <div>
+            <label for="girthLimit">Girth Limit</label>
+            <input id="girthLimit" type="number" min="1" step="0.01" value="105" />
+            <div class="hint">Length + 2×(Width + Height)</div>
+          </div>
+          <div>
+            <label for="topN">Show Top N</label>
+            <input id="topN" type="number" min="1" step="1" value="8" />
+          </div>
+          <div>
+            <label for="perItemK">Per-Item Search K</label>
+            <input id="perItemK" type="number" min="1" step="1" value="8" />
+            <div class="hint">Larger K = more precise</div>
+          </div>
+          <div>
+            <label for="beamWidth">Combine Beam</label>
+            <input id="beamWidth" type="number" min="1" step="1" value="60" />
+            <div class="hint">Controls multi-item combining breadth</div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- Results -->
+    <section class="card" style="margin-top:14px" aria-label="Results">
+      <div class="row" style="justify-content:space-between; align-items:baseline">
+        <span id="bestTag" class="pill" style="display:none">Best</span>
+        <div id="summary" class="hint"></div>
+      </div>
+      <div id="suggestion" class="note" style="display:none"></div>
+      <div id="results" style="margin-top:6px"></div>
+    </section>
+  </div>
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const fmt = (n)=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
+  const permutations = (a)=>[
+    [a[0],a[1],a[2]],[a[0],a[2],a[1]],[a[1],a[0],a[2]],[a[1],a[2],a[0]],[a[2],a[0],a[1]],[a[2],a[1],a[0]],
+  ];
+
+  // single DIM divisor (change if needed)
+  const DIM_DIVISOR = 139;
+
+  /* ---------- Core helpers ---------- */
+  function girthOK(L,W,H,limit){
+    const s=[L,W,H].sort((x,y)=>y-x);
+    const g=s[0] + 2*(s[1]+s[2]);
+    return {ok:g<=limit, girth:g, length:s[0], other1:s[1], other2:s[2]};
+  }
+
+  function billableWeightForBox(L,W,H, actualWeight){
+    const dimWeight = (L * W * H) / DIM_DIVISOR;
+    const act = actualWeight || 0;
+    if(act <= 0) return dimWeight;
+    return Math.max(act, dimWeight);
+  }
+
+  function uniqueTriplesForQty(Q){
+    const out=[], seen=new Set(), Qc=Math.max(1,Math.ceil(Q));
+    for(let a=1;a<=Qc;a++){
+      const maxB=Math.ceil(Qc/a);
+      for(let b=a;b<=maxB;b++){
+        const c=Math.ceil(Qc/(a*b));
+        const t=[a,b,Math.max(b,c)].sort((x,y)=>x-y);
+        const k=t.join('x');
+        if(!seen.has(k)){seen.add(k); out.push(t);}
+      }
+    }
+    return out;
+  }
+
+  function buildBlocksForItem(L,W,H,Q,WT,keepK){
+    const triples=uniqueTriplesForQty(Q), orients=permutations([L,W,H]), rows=[];
+    const perItemWeight = (WT>0 ? WT : 0);
+    const totalItemWeight = perItemWeight * Math.max(1, Q);
+
+    for(const t of triples){
+      for(const o of orients){
+        const dims=[t[0]*o[0], t[1]*o[1], t[2]*o[2]];
+        const [L2,W2,H2]=dims.map(x=>+x.toFixed(4));
+        rows.push({
+          L:L2,
+          W:W2,
+          H:H2,
+          sum:L2+W2+H2,
+          weight: totalItemWeight,
+          a:t[0],b:t[1],c:t[2],
+          orient:o.slice()
+        });
+      }
+    }
+    // dedupe per-item outer dims
+    const seen=new Set(), dedup=[];
+    for(const r of rows){
+      const key=[r.L,r.W,r.H].map(v=>v.toFixed(4)).sort((a,b)=>Number(a)-Number(b)).join('|');
+      if(!seen.has(key)){seen.add(key); dedup.push(r);}
+    }
+    dedup.sort((x,y)=>x.sum-y.sum || (x.L*x.W*x.H)-(y.L*y.W*y.H));
+    return dedup.slice(0, keepK);
+  }
+
+  function combineBlocks(blockLists, beamWidth, girthLimit){
+    let beams=[{L:0,W:0,H:0,sum:0,weight:0,picked:[]}];
+    const axes=['X','Y','Z'];
+    for(let i=0;i<blockLists.length;i++){
+      const next=[];
+      for(const b of beams){
+        for(const blk of blockLists[i]){
+          for(const ax of axes){
+            let L=b.L,W=b.W,H=b.H;
+            if(ax==='X'){ L=b.L+blk.L; W=Math.max(b.W,blk.W); H=Math.max(b.H,blk.H); }
+            if(ax==='Y'){ L=Math.max(b.L,blk.L); W=b.W+blk.W; H=Math.max(b.H,blk.H); }
+            if(ax==='Z'){ L=Math.max(b.L,blk.L); W=Math.max(b.W,blk.W); H=b.H+blk.H; }
+            const s=L+W+H;
+            if(!girthOK(L,W,H,girthLimit).ok) continue;
+
+            const weight = (b.weight || 0) + (blk.weight || 0);
+            const bw = billableWeightForBox(L,W,H,weight);
+
+            next.push({
+              L,W,H,
+              sum:s,
+              weight,
+              bw,
+              picked:b.picked.concat([{i,ax,blk}])
+            });
+          }
+        }
+      }
+      // rank by billable weight, then L+W+H, then volume
+      next.sort((x,y)=>{
+        if(x.bw !== y.bw) return x.bw - y.bw;
+        if(x.sum !== y.sum) return x.sum - y.sum;
+        const volX = x.L*x.W*x.H, volY = y.L*y.W*y.H;
+        return volX - volY;
+      });
+      beams=next.slice(0, beamWidth);
+      if(!beams.length) break;
+    }
+    beams.sort((x,y)=>{
+      if(x.bw !== y.bw) return x.bw - y.bw;
+      if(x.sum !== y.sum) return x.sum - y.sum;
+      const volX = x.L*x.W*x.H, volY = y.L*y.W*y.H;
+      return volX - volY;
+    });
+    return beams;
+  }
+
+  // de-duplicate identical outer cartons after combining
+  function dedupeBoxes(list){
+    const out=[], seen=new Set();
+    for(const r of list){
+      const key=[r.L,r.W,r.H].map(v=>v.toFixed(4)).sort((a,b)=>Number(a)-Number(b)).join('|');
+      if(!seen.has(key)){ seen.add(key); out.push(r); }
+    }
+    return out;
+  }
+
+  /* ---------- Items UI ---------- */
+  function renderItemsTable(){
+    const wrap=$('itemsWrap');
+    wrap.innerHTML = `
+      <table id="itemsTable">
+        <thead>
+          <tr>
+            <th style="width:44px">#</th>
+            <th>Length</th>
+            <th>Width</th>
+            <th>Height</th>
+            <th>Qty</th>
+            <th>Weight</th>
+            <th style="width:86px"></th>
+          </tr>
+        </thead>
+        <tbody id="itemsTbody"></tbody>
+      </table>`;
+  }
+
+  function addItemRow(vals={}){
+    const tb=$('itemsTbody');
+    const idx=tb.children.length+1;
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td class="muted">${idx}</td>
+      <td><input type="number" step="0.01" min="0.01" value="${vals.L ?? ''}" placeholder="Length"></td>
+      <td><input type="number" step="0.01" min="0.01" value="${vals.W ?? ''}" placeholder="Width"></td>
+      <td><input type="number" step="0.01" min="0.01" value="${vals.H ?? ''}" placeholder="Height"></td>
+      <td><input type="number" step="1" min="1" value="${vals.Q ?? 1}" placeholder="Qty"></td>
+      <td><input type="number" step="0.01" min="0" value="${vals.WT ?? ''}" placeholder="Weight (lb)"></td>
+      <td><button class="btn remove" title="Remove row">Remove</button></td>`;
+    tb.appendChild(tr);
+    tr.querySelector('.remove').addEventListener('click',()=>{
+      tr.remove();
+      [...tb.children].forEach((r,i)=> r.children[0].textContent=String(i+1));
+      compute();
+    });
+  }
+
+  function getItems(){
+    const rows=[...document.querySelectorAll('#itemsTbody tr')];
+    return rows.map(r=>{
+      const [L,W,H,Q,WT]=[...r.querySelectorAll('input')].map(i=>parseFloat(i.value));
+      return {L,W,H,Q,WT};
+    }).filter(x=>
+      !Number.isNaN(x.L)||!Number.isNaN(x.W)||!Number.isNaN(x.H)||!Number.isNaN(x.Q)||!Number.isNaN(x.WT)
+    );
+  }
+
+  function validateItems(items){
+    if(!items.length) return "Add at least one item.";
+    for(let i=0;i<items.length;i++){
+      const {L,W,H,Q,WT}=items[i];
+      if(!(L>0&&W>0&&H>0)) return `Line ${i+1}: enter positive L/W/H.`;
+      if(!(Q>=1)) return `Line ${i+1}: Qty must be at least 1.`;
+      if(L>10000||W>10000||H>10000) return `Line ${i+1}: dimensions look too large (inches).`;
+      if(!Number.isNaN(WT) && WT<0) return `Line ${i+1}: Weight cannot be negative.`;
+    }
+    return "";
+  }
+
+  /* ---------- Table + 3D ---------- */
+  function drawIsometric(canvas, L, W, H){
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth, cssH = canvas.clientHeight;
+    canvas.width = Math.max(1, Math.floor(cssW * dpr));
+    canvas.height = Math.max(1, Math.floor(cssH * dpr));
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,cssW,cssH);
+
+    if(!(L>0 && W>0 && H>0)) return;
+
+    const pad = 16;
+    const drawW = cssW - pad*2;
+    const drawH = cssH - pad*2;
+
+    const ax = Math.cos(Math.PI/6), ay = Math.sin(Math.PI/6);
+    const maxX = L*ax + W*ax;
+    const maxY = H + L*ay + W*ay;
+    const scale = Math.min(drawW/(maxX||1), drawH/(maxY||1));
+    const offsetX = pad + (drawW - maxX*scale)/2;
+    const offsetY = pad + (drawH - maxY*scale)/2;
+
+    const P = (x,y,z)=>({
+      x: offsetX + (x*ax - y*ax)*scale,
+      y: offsetY + (z + x*ay + y*ay)*scale
+    });
+
+    const A=P(0,0,0), B=P(L,0,0), C=P(L,W,0), D=P(0,W,0);
+    const A2=P(0,0,H), B2=P(L,0,H), C2=P(L,W,H), D2=P(0,W,H);
+
+    const line=(p,q,stroke='#0f172a',w=1)=>{ ctx.strokeStyle=stroke; ctx.lineWidth=w; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); ctx.stroke(); };
+    const poly=(pts,fill,stroke,w=1)=>{ ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x,pts[i].y); ctx.closePath(); if(fill){ctx.fillStyle=fill; ctx.fill();} if(stroke){ctx.strokeStyle=stroke; ctx.lineWidth=w; ctx.stroke();} };
+    const text=(s,x,y,c='#64748b',size=12,align='center')=>{ ctx.fillStyle=c; ctx.font=`${size}px ui-sans-serif, system-ui`; ctx.textAlign=align; ctx.textBaseline='middle'; ctx.fillText(s,x,y); };
+
+    poly([A2,B2,C2,D2],'rgba(99,102,241,0.06)','#e2e8f0',1);
+    poly([B,B2,C2,C],'rgba(14,165,233,0.06)','#e2e8f0',1);
+    poly([A,A2,D2,D],'rgba(16,185,129,0.06)','#e2e8f0',1);
+
+    [ [A,B],[B,C],[C,D],[D,A],[A,A2],[B,B2],[C,C2],[D,D2],[A2,B2],[B2,C2],[C2,D2],[D2,A2] ]
+      .forEach(seg=>line(seg[0],seg[1],'#0f172a',1));
+
+    const arrow=(p,q,label,color='#2563eb')=>{
+      line(p,q,color,1.6);
+      const ang=Math.atan2(q.y-p.y, q.x-p.x), ah=8;
+      const t1={x:q.x - Math.cos(ang)*ah + Math.sin(ang)*ah, y:q.y - Math.sin(ang)*ah - Math.cos(ang)*ah};
+      const t2={x:q.x - Math.cos(ang)*ah - Math.sin(ang)*ah, y:q.y - Math.sin(ang)*ah + Math.cos(ang)*ah};
+      line(q,t1,color,1.6); line(q,t2,color,1.6);
+    };
+    arrow(A,B,'L'); text(`L ${fmt(L)} in`, (A.x+B.x)/2, (A.y+B.y)/2 - 10, '#2563eb');
+    arrow(B,C,'W'); text(`W ${fmt(W)} in`, (B.x+C.x)/2 + 10, (B.y+C.y)/2 + 2, '#2563eb', 12, 'left');
+    arrow(B,B2,'H'); text(`H ${fmt(H)} in`, B.x + 10, (B.y+B2.y)/2, '#2563eb', 12, 'left');
+  }
+
+  function renderTable(rows, topN, girthLimit){
+    const el=$('results');
+    if(!rows || !rows.length){
+      el.innerHTML='';
+      $('bestTag').style.display='none';
+      $('summary').textContent='';
+      return;
+    }
+    const n=Math.min(topN, rows.length);
+    let html=`<table class="results"><thead><tr>
+      <th>#</th>
+      <th>Carton (L × W × H)</th>
+      <th>L + W + H</th>
+      <th>Length + 2×(W+H)</th>
+      <th>Weight (Actual / Billable lb)</th>
+      <th>3D</th>
+    </tr></thead><tbody>`;
+    for(let i=0;i<n;i++){
+      const r=rows[i];
+      const g=girthOK(r.L,r.W,r.H,girthLimit);
+      const rowId=`r${i}`;
+      const actualWt = r.weight ? fmt(r.weight) : '—';
+      const billableWt = fmt(r.bw || billableWeightForBox(r.L,r.W,r.H,r.weight));
+      html+=`<tr ${i===0?'class="win"':''}>
+        <td>${i+1}</td>
+        <td>${fmt(r.L)} × ${fmt(r.W)} × ${fmt(r.H)} in</td>
+        <td>${fmt(r.sum)}</td>
+        <td>${fmt(g.girth)} / ${fmt(girthLimit)}</td>
+        <td>${actualWt} / ${billableWt}</td>
+        <td>
+          <details class="viz-det" data-L="${r.L}" data-W="${r.W}" data-H="${r.H}">
+            <summary>3D view</summary>
+            <div class="viz-box">
+              <canvas class="viz-canvas" id="cv-${rowId}"></canvas>
+              <div class="viz-caption">Isometric view of this carton</div>
+            </div>
+          </details>
+        </td>
+      </tr>`;
+    }
+    html+='</tbody></table>';
+    $('bestTag').style.display='';
+    el.innerHTML=html;
+
+    const allDetails = [...el.querySelectorAll('details.viz-det')];
+
+    allDetails.forEach(det=>{
+      det.addEventListener('toggle', ()=>{
+        if(det.open){
+          const L=parseFloat(det.dataset.l), W=parseFloat(det.dataset.w), H=parseFloat(det.dataset.h);
+          const canvas = det.querySelector('canvas.viz-canvas');
+          drawIsometric(canvas, L, W, H);
+        }
+      });
+    });
+
+    const redrawOpen = ()=>{
+      allDetails.forEach(det=>{
+        if(det.open){
+          const L=parseFloat(det.dataset.l), W=parseFloat(det.dataset.w), H=parseFloat(det.dataset.h);
+          const canvas = det.querySelector('canvas.viz-canvas');
+          drawIsometric(canvas, L, W, H);
+        }
+      });
+    };
+    window.__dimVizResize && window.removeEventListener('resize', window.__dimVizResize);
+    window.__dimVizResize = redrawOpen;
+    window.addEventListener('resize', redrawOpen);
+  }
+
+  /* ---------- Suggestion line ---------- */
+  function setSuggestion(text, cls){
+    const s=$('suggestion');
+    if(!text){
+      s.style.display='none';
+      s.textContent='';
+      s.className='note';
+      return;
+    }
+    s.textContent=text;
+    s.className='note ' + (cls||'');
+    s.style.display='';
+  }
+
+  /* ---------- Compute ---------- */
+  function compute(){
+    $('status').textContent='';
+    const items=getItems();
+    const err=validateItems(items);
+    const girthLimit=parseFloat($('girthLimit').value)||105;
+    const keepK=Math.max(1, parseInt($('perItemK').value,10)||8);
+    const beamWidth=Math.max(1, parseInt($('beamWidth').value,10)||60);
+    const topN=Math.max(1, parseInt($('topN').value,10)||8);
+
+    if(err){
+      $('summary').textContent='';
+      $('results').innerHTML='';
+      $('bestTag').style.display='none';
+      setSuggestion('');
+      $('status').textContent=err;
+      return;
+    }
+
+    const t0=performance.now();
+    const blockLists=items.map(({L,W,H,Q,WT})=>buildBlocksForItem(L,W,H,Q,WT, keepK));
+    let candidates=combineBlocks(blockLists, beamWidth, girthLimit);
+    candidates = dedupeBoxes(candidates);
+    const t1=performance.now();
+
+    if(!candidates.length){
+      $('summary').textContent='';
+      $('results').innerHTML='';
+      $('bestTag').style.display='none';
+      $('status').innerHTML=`<span class="danger">No combined carton fits girth ${fmt(girthLimit)}.</span>`;
+      setSuggestion('Recommendation: split into multiple boxes/labels for this shipment.', 'danger');
+      return;
+    }
+
+    const best=candidates[0];
+    const bestBillable = best.bw || billableWeightForBox(best.L,best.W,best.H,best.weight);
+    const bestActual = best.weight || 0;
+
+    $('summary').textContent=
+      `Best: ${fmt(best.L)} × ${fmt(best.W)} × ${fmt(best.H)} in • ` +
+      `L+W+H ${fmt(best.sum)} • ` +
+      `Actual wt ${fmt(bestActual)} lb • ` +
+      `Est. billable wt ${fmt(bestBillable)} lb • ` +
+      `${fmt(t1-t0)} ms`;
+
+    renderTable(candidates, topN, girthLimit);
+
+    const g=girthOK(best.L,best.W,best.H,girthLimit);
+    if(g.girth >= girthLimit - 5){
+      setSuggestion('Tip: this carton is near the girth limit — multiple smaller boxes may be cheaper.', 'warn');
+    } else {
+      setSuggestion('');
+    }
+  }
+
+  /* ---------- wiring ---------- */
+  renderItemsTable();
+  addItemRow({});
+  compute();
+
+  $('addItemBtn').addEventListener('click',()=>{ addItemRow({}); compute(); });
+  $('clearItemsBtn').addEventListener('click',()=>{ $('itemsTbody').innerHTML=''; addItemRow({}); compute(); });
+
+  let t=null;
+  document.addEventListener('input',(e)=>{
+    if(
+      e.target.closest('#itemsWrap') ||
+      e.target.closest('.controls')
+    ){
+      clearTimeout(t); t=setTimeout(compute, 120);
+    }
+  });
+})();
+</script>
+</body>
+</html>
