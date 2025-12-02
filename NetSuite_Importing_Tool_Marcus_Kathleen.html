@@ -1,212 +1,641 @@
 <!DOCTYPE html>
-<!-- Save this code as an .html file and open it in a browser -->
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NetSuite Importing (UTF-8)</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-    .invalid { background-color: #fdd; }
-    .warning { background-color: #ffeeba; }
-    td[contenteditable="true"] { background-color: #fff8dc; }
-    .group-header { font-weight: bold; background-color: #f0f0f0; }
- 
-    /* Monospaced textarea with visible, wide tabs/spaces */
-    textarea#inputData {
-      font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-      white-space: pre;
-      tab-size: 4;
-      -moz-tab-size: 4;
-      -o-tab-size: 4;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetSuite Importing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
     }
-</style>
+    /* Style for editable cells in the preview table */
+    td[contenteditable="true"] {
+      background-color: #e0f2fe; /* Light sky */
+      outline-color: #0ea5e9; /* Sky outline on focus */
+    }
+    /* Custom scrollbar for the preview table container */
+    #preview::-webkit-scrollbar { width: 8px; height: 8px; }
+    #preview::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+    #preview::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+    #preview::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    #zeroQtyList::-webkit-scrollbar { width: 6px; }
+    #zeroQtyList::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+    #zeroQtyList::-webkit-scrollbar-thumb { background: #fcd34d; border-radius: 10px; }
+    #zeroQtyList::-webkit-scrollbar-thumb:hover { background: #fbbf24; }
+
+    /* Simple transition for buttons */
+    button {
+        transition: all 0.2s ease-in-out;
+    }
+    .delete-row-btn { opacity: 0; transition: opacity 0.2s ease-in-out; }
+    tr:hover .delete-row-btn { opacity: 1; }
+  </style>
 </head>
-<body class="bg-gray-100 text-gray-900 font-sans p-4 md:p-6">
-<div class="max-w-7xl mx-auto">
-<!-- Header with title + byline -->
-<div class="flex justify-between items-center mb-6">
-<h2 class="text-2xl md:text-3xl font-bold">NetSuite Importing</h2>
-<span class="text-sm text-gray-600">By: Kathleen Delos Santos</span>
-</div>
- 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-<div>
-<label class="block font-medium mb-1">PO Batch Number</label>
-<input id="defaultPo" type="text" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., CL250505LKQ-NJ-1T">
-</div>
-<div>
-<label class="block font-medium mb-1">Supplier</label>
-<select id="defaultSupplier" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-<option value="LKQ">LKQ</option>
-<option value="DEPO_NJ">DEPO_NJ</option>
-<option value="DEPO_GA">DEPO_GA</option>
-<option value="DEPO_IL">DEPO_IL</option>
-<option value="DEPO_CA">DEPO_CA</option>
-<option value="EAGLE_NJ">EAGLE_NJ</option>
-<option value="EAGLE_CA">EAGLE_CA</option>
-<option value="KSI_NJ">KSI_NJ</option>
-<option value="KSI_GA">KSI_GA</option>
-<option value="KSI_IL">KSI_IL</option>
-<option value="TYC_NJ">TYC_NJ</option>
-<option value="TYC_GA">TYC_GA</option>
-<option value="TYC_IL">TYC_IL</option>
-<option value="TYC_CA">TYC_CA</option>
-</select>
-</div>
-</div>
- 
-    <!-- Input area with monospaced font and visible tabs -->
-<textarea id="inputData" rows="8" class="w-full p-3 border border-gray-300 rounded-md mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Paste your tab-separated data here..."></textarea>
- 
-    <!-- Total Orders & Total Qty -->
-<div class="text-gray-700 font-medium mb-6 flex flex-wrap items-baseline gap-4">
-<div>Total Orders: <span id="totalOrders">0</span></div>
-<div>Total Qty:   <span id="totalQty">0</span></div>
-</div>
- 
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-<button onclick="generateCSV()" class="bg-blue-600 text-white px-5 py-3 rounded hover:bg-blue-700 w-full sm:w-auto text-center">Download CSV (UTF-8)</button>
-<div class="flex-1">
-<label class="font-medium">Toggle Columns:</label>
-<div id="toggleControls" class="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm"></div>
-</div>
-</div>
- 
-    <h3 class="text-xl font-semibold mb-2">Preview (click cells to edit)</h3>
-<div id="preview" class="overflow-x-auto bg-white p-3 rounded shadow-md"></div>
-</div>
- 
+<body class="bg-slate-100 text-slate-800">
+
+  <div class="mx-auto p-4 sm:p-6 lg:p-8 lg:grid lg:grid-cols-7 lg:gap-8">
+
+    <div class="lg:col-span-2">
+      <div id="zeroQtyListContainer" class="hidden lg:block bg-white rounded-xl shadow-lg p-4 sm:p-6 sticky top-8">
+        <h3 class="text-lg font-semibold mb-4 text-slate-700 border-b border-slate-200 pb-3">Zero Qty Orders</h3>
+        <div id="zeroQtyList" class="max-h-[80vh] overflow-y-auto">
+          <p class="text-slate-500 text-sm text-center py-4">Click "List Zero Qty Orders" in the main panel to populate this list.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-5 mt-6 lg:mt-0">
+      <div class="bg-white rounded-xl shadow-lg p-6 sm:p-8">
+
+        <div class="flex justify-between items-start mb-8 border-b border-slate-200 pb-6">
+          <div>
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">NetSuite Importing</h1>
+            <p class="text-slate-500 mt-2">Paste your data, edit live, and generate an import-ready CSV file.</p>
+          </div>
+        </div>
+
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold mb-4 text-slate-700">1. Configuration</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label for="defaultPo" class="block text-sm font-medium text-slate-600 mb-1">PO Batch Number</label>
+              <input id="defaultPo" type="text" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., CL250409LKQ-NJ-1T">
+            </div>
+            <div>
+              <label for="confirmationNumber" class="block text-sm font-medium text-slate-600 mb-1">Confirmation Number</label>
+              <input id="confirmationNumber" type="text" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter confirmation number">
+            </div>
+            <div>
+              <label for="defaultSupplier" class="block text-sm font-medium text-slate-600 mb-1">Supplier</label>
+              <select id="defaultSupplier" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option>LKQ</option><option>DEPO_NJ</option><option>DEPO_GA</option><option>DEPO_IL</option><option>DEPO_CA</option>
+                <option>EAGLE_NJ</option><option>EAGLE_CA</option><option>KSI_NJ</option><option>KSI_GA</option><option>KSI_IL</option>
+                <option>TYC_NJ</option><option>TYC_GA</option><option>TYC_IL</option><option>TYC_CA</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-slate-700">2. Paste Data</h2>
+            <textarea id="inputData" rows="10" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your tab-separated data here..."></textarea>
+            <div class="mt-3 flex items-center justify-start gap-6 text-sm border-t border-slate-200 pt-3">
+                <div>
+                    <span class="font-medium text-slate-500">Total Orders:</span>
+                    <span id="totalOrders" class="font-bold text-slate-800 text-base ml-2">0</span>
+                </div>
+                <div>
+                    <span class="font-medium text-slate-500">Total Quantity:</span>
+                    <span id="totalQty" class="font-bold text-slate-800 text-base ml-2">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold mb-4 text-slate-700">3. Actions & Options</h2>
+          <div class="flex flex-wrap items-center gap-4 mb-6">
+            <button onclick="generateCSV()" class="flex items-center gap-2 bg-blue-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-blue-700 shadow-sm transform hover:scale-105">
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+              Download CSV
+            </button>
+            <button onclick="addRow()" class="flex items-center gap-2 bg-green-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-green-700 shadow-sm transform hover:scale-105">
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+              Add Row
+            </button>
+            <button onclick="listZeroQtyOrders()" class="flex items-center gap-2 bg-amber-500 text-white px-5 py-3 rounded-lg font-semibold hover:bg-amber-600 shadow-sm transform hover:scale-105">
+              <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+              </svg>
+              List Zero Qty Orders
+            </button>
+            <button onclick="resetForm()" class="flex items-center gap-2 bg-red-500 text-white px-5 py-3 rounded-lg font-semibold hover:bg-red-600 shadow-sm transform hover:scale-105 ml-auto">
+              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
+              Reset
+            </button>
+          </div>
+          <div>
+              <label class="font-medium text-slate-600">Toggle Columns:</label>
+              <div id="toggleControls" class="mt-2 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 text-sm"></div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-xl font-semibold mb-4 text-slate-700">4. Live Preview <span class="text-sm font-normal text-slate-500">(click cells to edit, Qty=0 rows are highlighted)</span></h2>
+          <div id="preview" class="overflow-x-auto bg-sky-50 border border-sky-200 rounded-lg shadow-inner max-h-[60vh]">
+               <p class="text-slate-500 p-6 text-center">Paste data above to see a preview.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <script>
-    const headers = ["Supplier","PO Number","Order Number","SKU1","SKU2","Qty","Customer Name","Address Street 1","Address Street 2","Address City","Address State","Address Zip","Notes"];
+    // --- CONFIGURATION ---
+    const headers = ["Supplier", "PO Number", "Confirmation Number", "Order Number", "SKU1", "SKU2", "Qty", "Customer Name", "Address Street 1", "Address Street 2", "Address City", "Address State", "Address Zip", "Notes"];
     let visibleColumns = new Set(headers);
- 
+    let debounceTimer;
+
+    // --- DOM ELEMENTS ---
+    const inputDataEl = document.getElementById('inputData');
+    const defaultPoEl = document.getElementById('defaultPo');
+    const confirmationNumberEl = document.getElementById('confirmationNumber');
+    const defaultSupplierEl = document.getElementById('defaultSupplier');
+    const previewDiv = document.getElementById('preview');
+
+    // --- CORE LOGIC ---
+
+    /**
+     * Toggles column visibility and re-renders the preview.
+     */
+    function toggleColumn(header, isVisible) {
+        if (isVisible) visibleColumns.add(header);
+        else visibleColumns.delete(header);
+        renderPreview();
+    }
+
+    /**
+     * Renders the column toggle checkboxes.
+     */
     function renderToggleControls() {
-      const container = document.getElementById('toggleControls');
-      container.innerHTML = '';
-      headers.forEach(h => {
-        const label = document.createElement('label');
-        label.className = "flex items-center gap-2 p-1 border rounded hover:bg-gray-50";
-        const cb = document.createElement('input');
-        cb.type = 'checkbox'; cb.checked = true; cb.dataset.col = h;
-        cb.addEventListener('change', () => {
-          if (cb.checked) visibleColumns.add(h); else visibleColumns.delete(h);
-          renderPreview(); updateCount();
-        });
-        label.append(cb, document.createTextNode(h));
-        container.appendChild(label);
-      });
+        const container = document.getElementById('toggleControls');
+        container.innerHTML = headers.map(header => `
+            <label class="flex items-center gap-2 p-2 border border-slate-200 rounded-md cursor-pointer hover:bg-slate-50">
+                <input type="checkbox" ${visibleColumns.has(header) ? 'checked' : ''} onchange="toggleColumn('${header}', this.checked)"
+                       class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-transparent">
+                ${header}
+            </label>
+        `).join('');
     }
- 
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('inputData').addEventListener('input', () => { renderPreview(); updateCount(); });
-      document.getElementById('defaultPo').addEventListener('input', () => { renderPreview(); updateCount(); });
-      document.getElementById('defaultSupplier').addEventListener('change', () => { renderPreview(); updateCount(); });
-      renderToggleControls();
-      renderPreview();
-      updateCount();
-    });
- 
+
+    /**
+     * Renders the data preview table based on current inputs.
+     */
     function renderPreview() {
-      const raw = document.getElementById('inputData').value.trim();
-      const previewEl = document.getElementById('preview');
-      if (!raw) {
-        previewEl.innerHTML = '<p class="text-gray-500">No data to preview.</p>';
-        return;
-      }
-      const linesArr = raw.split("\n").filter(l => l.trim());
-      const po = document.getElementById('defaultPo').value.trim();
-      const supplier = document.getElementById('defaultSupplier').value.trim();
-      const qtyIdx = headers.indexOf("Qty");
-      const notesIdx = headers.indexOf("Notes");
-      const custIdx = headers.indexOf("Customer Name");
-      let html = '<table class="min-w-full text-sm sm:text-base"><thead><tr>' +
-                 headers.map(h => visibleColumns.has(h)
-                     ? `<th class="px-2 py-1 bg-gray-200 sticky top-0">${h}</th>`
-                     : ''
-                   ).join('') +
-                 '</tr></thead><tbody>';
-      let prevRow = null;
-      let prevOrder = '';
-      linesArr.forEach(line => {
-        const f = line.split("\t");
-        if (f.length < 5) return;
-        let [orderNum='', sku1='', sku2='', qty='', cust='', addr1='', addr2='', city='', state='', zip=''] = f;
-        let note = '';
-        const m = orderNum.match(/-(R[^-]*|M[^-]*)$/i);
-        if (m) { note = m[1]; orderNum = orderNum.slice(0, orderNum.length - m[0].length); }
-        if (!orderNum) orderNum = prevOrder;
-        else prevOrder = orderNum;
-        if (supplier === 'LKQ' && sku1 && !sku1.startsWith('LKQ-')) { sku1 = 'LKQ-' + sku1; }
-        let row = [supplier, po, orderNum, sku1, sku2, qty, cust, addr1, addr2, city, state, zip, note];
-        if (prevRow) {
-          const sameCust = row[custIdx].trim() && row[custIdx] === prevRow[custIdx];
-          row = row.map((cell, i) => {
-            if (cell.toString().trim()) return cell;
-            if (i === headers.length - 1) return '';
-            return sameCust ? prevRow[i] : '';
-          });
+        const rawData = inputDataEl.value.trim();
+        if (!rawData) {
+            previewDiv.innerHTML = '<p class="text-slate-500 p-6 text-center">Paste data above to see a preview.</p>';
+            return;
         }
-        prevRow = row;
-        html += '<tr>';
-        row.forEach((cell, i) => {
-          if (!visibleColumns.has(headers[i])) return;
-          if (i === notesIdx && row[qtyIdx] === '0') {
-            html += `
-<td class="px-2 py-1 border border-gray-200">
-<select onchange="this.closest('tr').dataset.note=this.value">
-<option value="">-- select --</option>
-<option>Buyer Canceled - Not Ordered</option>
-<option>Buyer Canceled - Please Stock</option>
-<option>Invalid RS - Not Ordered</option>
-<option>Invalid RS - Please Stock</option>
-</select>
-</td>`;
-          } else {
-            html += `<td contenteditable="true" class="px-2 py-1 border border-gray-200 whitespace-pre-wrap">${cell||''}</td>`;
-          }
+
+        const lines = rawData.split("\n").filter(l => l.trim());
+        const po = defaultPoEl.value.trim();
+        const confirmation = confirmationNumberEl.value.trim();
+        const supplier = defaultSupplierEl.value.trim();
+
+        const visibleHeaders = headers.filter(h => visibleColumns.has(h));
+        
+        let bodyHTML = '';
+        let prevOrder = '';
+        lines.forEach(line => {
+            const fields = line.split("\t");
+            if (fields.length < 5) return; // Skip malformed lines quietly
+
+            let [orderNum = '', sku1 = '', sku2 = '', qty = '', cust = '', addr1 = '', addr2 = '', city = '', state = '', zip = ''] = fields;
+            let note = '';
+            const noteMatch = orderNum.match(/-(R[^-]*|M[^-]*)$/i);
+            if (noteMatch) {
+                note = noteMatch[1];
+                orderNum = orderNum.slice(0, orderNum.length - noteMatch[0].length);
+            }
+            if (!orderNum.trim()) orderNum = prevOrder;
+            else prevOrder = orderNum;
+
+            if (supplier === 'LKQ' && sku1 && !sku1.startsWith('LKQ-')) sku1 = 'LKQ-' + sku1;
+
+            const rowData = { "Supplier": supplier, "PO Number": po, "Confirmation Number": confirmation, "Order Number": orderNum, "SKU1": sku1, "SKU2": sku2, "Qty": qty, "Customer Name": cust, "Address Street 1": addr1, "Address Street 2": addr2, "Address City": city, "Address State": state, "Address Zip": zip, "Notes": note };
+            
+            const cellsHTML = headers.map(header => {
+                if (!visibleColumns.has(header)) return '';
+
+                if (header === 'Notes' && rowData['Qty'].trim() === '0') {
+                    const noteOptions = [
+                        "Buyer Canceled - Not ordered",
+                        "Buyer Canceled - Please Stock",
+                        "Invalid RS - Not ordered",
+                        "Invalid RS - Please Stock",
+                    ];
+                    const customOptionValue = "Custom";
+                    const customOptionText = "Custom...";
+                    
+                    let currentNote = rowData['Notes'] || '';
+                    let isCustom = !noteOptions.includes(currentNote) && currentNote !== '';
+
+                    // Create the blank option. It's selected if there's no current note.
+                    let optionsHTML = `<option value="" ${currentNote === '' ? 'selected' : ''}></option>`;
+
+                    // Add the standard options
+                    optionsHTML += noteOptions.map(opt => `<option value="${opt}" ${currentNote === opt ? 'selected' : ''}>${opt}</option>`).join('');
+                    
+                    // Add the custom option
+                    optionsHTML += `<option value="${customOptionValue}" ${isCustom ? 'selected' : ''}>${customOptionText}</option>`;
+                    
+                    const selectHTML = `<select onchange="handleNoteChange(this)" class="w-full bg-transparent p-1 border-0 focus:ring-0 rounded-md">${optionsHTML}</select>`;
+                    const textInputHTML = `<input type="text" class="custom-note-input w-full bg-transparent p-1 border border-transparent focus:border-sky-500 focus:ring-0 rounded-md" value="${isCustom ? currentNote : ''}" style="${isCustom ? '' : 'display: none;'}">`;
+
+                    return `<td class="px-1 py-0 align-middle">${selectHTML}${textInputHTML}</td>`;
+                }
+                
+                return `<td contenteditable="true" class="px-3 py-2">${rowData[header] || ''}</td>`;
+            }).join('');
+            
+            const isZeroQty = rowData['Qty'].trim() === '0';
+            const baseRowClass = "border-b border-sky-200/60 transition-colors";
+            const highlightClass = isZeroQty 
+                ? 'bg-amber-200 hover:bg-amber-300 font-semibold text-amber-900'
+                : 'hover:bg-sky-100';
+
+            bodyHTML += `<tr class="${baseRowClass} ${highlightClass}">${cellsHTML}</tr>`;
         });
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-      previewEl.innerHTML = html;
+        
+        const headerHTML = visibleHeaders.map(h => `<th class="border-b-2 border-sky-300 px-3 py-2 bg-sky-100 text-left font-semibold text-sky-900 sticky top-0">${h}</th>`).join('');
+        const headerRow = `<th class="border-b-2 border-sky-300 p-2 w-10 bg-sky-100 sticky top-0"></th>${headerHTML}`;
+        const tableHTML = `<table class="min-w-full text-sm whitespace-nowrap"><thead><tr>${headerRow}</tr></thead><tbody>${bodyHTML}</tbody></table>`;
+        
+        previewDiv.innerHTML = tableHTML;
+        addDeleteButtons();
     }
- 
-    function updateCount() {
-      const raw = document.getElementById('inputData').value;
-      const lines = raw.split("\n").filter(l => l.trim());
-      const orders = new Set();
-      let totalQty = 0;
-      lines.forEach(line => {
-        const cols = line.split("\t");
-        const order = cols[0]?.trim();
-        if (order) orders.add(order);
-        const q = parseFloat(cols[3]);
-        if (!isNaN(q)) totalQty += q;
-      });
-      document.getElementById('totalOrders').textContent = orders.size;
-      document.getElementById('totalQty').textContent = totalQty;
+    
+    /** Adds a delete button to each row in the preview table */
+    function addDeleteButtons() {
+        const rows = previewDiv.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cell = row.insertCell(0); // Insert cell at the beginning
+            cell.className = 'p-0 align-middle text-center';
+            cell.innerHTML = `<button onclick="this.closest('tr').remove()" class="delete-row-btn p-2 text-red-500 hover:text-red-700 rounded-full hover:bg-red-100">
+                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+            </button>`;
+        });
     }
- 
+
+    /** Adds a new, empty row to the preview table */
+    function addRow() {
+        const tableBody = previewDiv.querySelector('tbody');
+        if (!tableBody) {
+             showToast('Cannot add a row without data. Paste some data first.', true);
+             return;
+        }
+        const newRow = tableBody.insertRow();
+        newRow.className = 'border-b border-sky-200/60 hover:bg-sky-100';
+        
+        const deleteCell = newRow.insertCell(0);
+        deleteCell.className = 'p-0 align-middle text-center';
+        deleteCell.innerHTML = `<button onclick="this.closest('tr').remove()" class="delete-row-btn p-2 text-red-500 hover:text-red-700 rounded-full hover:bg-red-100" style="opacity:1;">
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+        </button>`;
+
+        headers.forEach(h => {
+            if (visibleColumns.has(h)) {
+                const cell = newRow.insertCell(-1);
+                cell.contentEditable = "true";
+                cell.className = "px-3 py-2";
+            }
+        });
+        newRow.cells[1]?.focus(); // Focus on the first editable cell
+    }
+
+    /** Handles changes in the note dropdown for zero-quantity items. */
+    function handleNoteChange(selectElement) {
+        const input = selectElement.nextElementSibling;
+        if (selectElement.value === 'Custom') {
+            input.style.display = 'block';
+            input.focus();
+        } else {
+            input.style.display = 'none';
+        }
+    }
+    
+    /** Calculates and updates the total orders and quantity display. */
+    function updateTotals() {
+        const rawData = inputDataEl.value.trim();
+        const totalOrdersEl = document.getElementById('totalOrders');
+        const totalQtyEl = document.getElementById('totalQty');
+
+        if (!rawData) {
+            totalOrdersEl.innerText = '0';
+            totalQtyEl.innerText = '0';
+            return;
+        }
+
+        const lines = rawData.split("\n").filter(l => l.trim());
+        const uniqueOrders = new Set();
+        let totalQty = 0;
+        let prevOrder = '';
+
+        lines.forEach(line => {
+            const fields = line.split("\t");
+            if (fields.length < 4) return;
+
+            let orderNum = fields[0] || '';
+            const qtyStr = fields[3] || '0';
+
+            const noteMatch = orderNum.match(/-(R[^-]*|M[^-]*)$/i);
+            if (noteMatch) {
+                orderNum = orderNum.slice(0, orderNum.length - noteMatch[0].length);
+            }
+            
+            if (!orderNum.trim()) {
+                orderNum = prevOrder;
+            } else {
+                prevOrder = orderNum.trim();
+            }
+
+            if (orderNum.trim()) {
+                uniqueOrders.add(orderNum.trim());
+            }
+
+            const qty = parseInt(qtyStr, 10);
+            if (!isNaN(qty)) {
+                totalQty += qty;
+            }
+        });
+
+        totalOrdersEl.innerText = uniqueOrders.size;
+        totalQtyEl.innerText = totalQty;
+    }
+
+
+    /** Debounces the preview rendering to avoid lag. */
+    function debouncedRenderPreview() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            renderPreview();
+            updateTotals(); // Update totals after rendering
+            saveState(); // Save state after rendering
+        }, 250);
+    }
+    
+    /** Gets data from the preview table, skipping the delete button column. */
+    function getTableData() {
+        const table = previewDiv.querySelector('table');
+        if (!table) { showToast('No preview data to process.', true); return null; }
+        
+        const visibleHeaders = headers.filter(h => visibleColumns.has(h));
+        const dataRows = [visibleHeaders];
+        
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            const dataCells = Array.from(tr.querySelectorAll('td')).slice(1); // skip delete button cell
+            const rowValues = [];
+            
+            visibleHeaders.forEach((header, index) => {
+                const cell = dataCells[index];
+                if (!cell) {
+                    rowValues.push('');
+                    return;
+                };
+
+                if (header === 'Notes') {
+                    const select = cell.querySelector('select');
+                    if (select) { // This is a special 'Notes' cell with a dropdown
+                        if (select.value === 'Custom') {
+                            const input = cell.querySelector('input.custom-note-input');
+                            rowValues.push(input ? input.value.trim() : '');
+                        } else {
+                            rowValues.push(select.value);
+                        }
+                    } else { // This is a standard contenteditable 'Notes' cell
+                        rowValues.push(cell.innerText.trim());
+                    }
+                } else { // All other cells are simple
+                    rowValues.push(cell.innerText.trim());
+                }
+            });
+            dataRows.push(rowValues);
+        });
+        return dataRows;
+    }
+
+    /** Converts a 2D array to a CSV string. */
+    function convertToCSV(data) {
+        return data.map(row => row.map(v => `"${v.replace(/"/g, '""')}"`).join(',')).join("\r\n");
+    }
+
+    /** Triggers a CSV file download. */
     function generateCSV() {
-      const table = document.querySelector('#preview table');
-      if (!table) return alert('No preview data found.');
-      const rows = [headers.filter(h => visibleColumns.has(h))];
-      table.querySelectorAll('tbody tr').forEach(tr => {
-        rows.push(Array.from(tr.querySelectorAll('td')).map(td => {
-          const sel = td.querySelector('select');
-          return sel ? sel.value.trim() : td.innerText.trim();
-        }));
-      });
-      const csv = rows.map(r => r.map(v => '"' + v.replace(/"/g,'""') + '"').join(',')).join("\r\n");
-      const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob), a = document.createElement('a');
-      a.href = url;
-      a.download = (document.getElementById('defaultPo').value.trim().replace(/[^a-zA-Z0-9-_]+/g,'_')||'import') + '.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+        const data = getTableData();
+        if (!data) return;
+        const csvContent = convertToCSV(data);
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const po = defaultPoEl.value.trim().replace(/[^a-zA-Z0-9-_]+/g, '_') || 'import';
+        link.href = url;
+        link.download = `${po}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast('CSV file download started!');
     }
-</script>
+
+    /** Lists all order numbers that have a quantity of 0. */
+    function listZeroQtyOrders() {
+        const table = previewDiv.querySelector('table');
+        const listContainer = document.getElementById('zeroQtyListContainer');
+        const listDiv = document.getElementById('zeroQtyList');
+
+        if (!table) {
+            showToast('No data to analyze.', true);
+            return;
+        }
+
+        const visibleHeaders = headers.filter(h => visibleColumns.has(h));
+        const orderNumIndex = visibleHeaders.indexOf('Order Number');
+        const qtyIndex = visibleHeaders.indexOf('Qty');
+
+        if (orderNumIndex === -1 || qtyIndex === -1) {
+            showToast('"Order Number" and "Qty" columns must be visible.', true);
+            return;
+        }
+        
+        const zeroQtyOrders = new Set();
+        const rows = table.querySelectorAll('tbody tr');
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            // Add 1 to index to account for the delete button cell at the beginning
+            const qtyCell = cells[qtyIndex + 1]; 
+            const orderNumCell = cells[orderNumIndex + 1];
+
+            if (qtyCell && orderNumCell && qtyCell.innerText.trim() === '0') {
+                zeroQtyOrders.add(orderNumCell.innerText.trim());
+            }
+        });
+
+        if (zeroQtyOrders.size > 0) {
+            const orderArray = Array.from(zeroQtyOrders).sort();
+            const noteOptions = [
+                "Buyer Canceled - Not ordered",
+                "Buyer Canceled - Please Stock",
+                "Invalid RS - Not ordered",
+                "Invalid RS - Please Stock",
+            ];
+            const optionsHTML = noteOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+            const customOptionHTML = `<option value="Custom">Custom...</option>`;
+
+            const onchangeHandler = `
+                ((select) => {
+                    const order = select.getAttribute('data-order');
+                    if (select.value === 'Custom') {
+                        const note = prompt('Enter custom note for order ' + order + ':');
+                        if (note !== null) { 
+                            applyNoteToOrder(order, note);
+                        } else {
+                            select.selectedIndex = 0;
+                        }
+                    } else {
+                        applyNoteToOrder(order, select.value);
+                    }
+                })(this)
+            `;
+
+            const listHTML = orderArray.map(order => `
+                <div class="flex items-center justify-between p-2 border-b border-amber-200/60 last:border-b-0">
+                    <span class="font-mono text-sm whitespace-nowrap">${order}</span>
+                    <select data-order="${order}" onchange="${onchangeHandler}" class="text-xs p-1 bg-white border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- Select Note --</option>
+                        ${optionsHTML}
+                        ${customOptionHTML}
+                    </select>
+                </div>
+            `).join('');
+
+            listDiv.innerHTML = listHTML;
+        } else {
+            listDiv.innerHTML = '<p class="p-2 text-center text-sm">No orders with zero quantity found in the preview data.</p>';
+        }
+        listContainer.classList.remove('hidden');
+    }
+
+    /** Applies a selected note from the zero-qty list to all matching orders in the preview table. */
+    function applyNoteToOrder(orderNumber, noteValue) {
+        const table = previewDiv.querySelector('table');
+        if (!table) {
+            showToast('Live preview table not found.', true);
+            return;
+        }
+
+        const visibleHeaders = headers.filter(h => visibleColumns.has(h));
+        const orderNumIndex = visibleHeaders.indexOf('Order Number');
+        const notesIndex = visibleHeaders.indexOf('Notes');
+        const qtyIndex = visibleHeaders.indexOf('Qty');
+
+        if (orderNumIndex === -1 || notesIndex === -1 || qtyIndex === -1) {
+            showToast('"Order Number", "Qty", and "Notes" columns must be visible to apply notes.', true);
+            return;
+        }
+
+        const orderNumCellIndex = orderNumIndex + 1;
+        const notesCellIndex = notesIndex + 1;
+        const qtyCellIndex = qtyIndex + 1;
+        
+        let updatedRows = 0;
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = Array.from(row.querySelectorAll('td'));
+            const orderCell = cells[orderNumCellIndex];
+            const qtyCell = cells[qtyCellIndex];
+            
+            if (orderCell && orderCell.innerText.trim() === orderNumber && qtyCell && qtyCell.innerText.trim() === '0') {
+                const noteCell = cells[notesCellIndex];
+                if (noteCell) {
+                    const select = noteCell.querySelector('select');
+                    if (select) {
+                        const isStandardOption = Array.from(select.options).some(opt => opt.value === noteValue && opt.value !== 'Custom');
+                        
+                        if (isStandardOption) {
+                            select.value = noteValue;
+                        } else { 
+                            select.value = 'Custom';
+                            const input = noteCell.querySelector('input.custom-note-input');
+                            if (input) {
+                                input.value = noteValue;
+                            }
+                        }
+                        handleNoteChange(select);
+                        updatedRows++;
+                    }
+                }
+            }
+        });
+
+        if (updatedRows > 0) {
+            showToast(`Applied note to ${updatedRows} line(s) for order ${orderNumber}.`);
+        }
+    }
+
+
+    /** Resets the form and clears saved state. */
+    function resetForm() {
+        defaultPoEl.value = '';
+        confirmationNumberEl.value = '';
+        defaultSupplierEl.value = 'LKQ';
+        inputDataEl.value = '';
+        localStorage.removeItem('netsuiteCsvGeneratorState');
+        visibleColumns = new Set(headers);
+        renderToggleControls();
+        renderPreview();
+        updateTotals();
+        document.getElementById('zeroQtyListContainer').classList.add('hidden', 'lg:block');
+        showToast('Form has been reset.');
+    }
+
+    /** Shows a temporary toast notification. */
+    function showToast(message, isError = false) {
+        const toast = document.createElement('div');
+        const bgColor = isError ? 'bg-red-500' : 'bg-slate-800 text-white';
+        toast.className = `fixed bottom-5 right-5 p-4 rounded-lg shadow-xl ${bgColor} transform translate-y-20 opacity-0 transition-all duration-300 ease-out z-50`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-y-20', 'opacity-0'), 10);
+        setTimeout(() => {
+            toast.classList.add('opacity-0');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 3000);
+    }
+
+    // --- STATE & THEME MANAGEMENT ---
+
+    /** Saves form state to localStorage. */
+    function saveState() {
+        const state = {
+            po: defaultPoEl.value,
+            confirmation: confirmationNumberEl.value,
+            supplier: defaultSupplierEl.value,
+            data: inputDataEl.value,
+        };
+        localStorage.setItem('netsuiteCsvGeneratorState', JSON.stringify(state));
+    }
+
+    /** Loads form state from localStorage. */
+    function loadState() {
+        const state = JSON.parse(localStorage.getItem('netsuiteCsvGeneratorState'));
+        if (state) {
+            defaultPoEl.value = state.po || '';
+            confirmationNumberEl.value = state.confirmation || '';
+            defaultSupplierEl.value = state.supplier || 'LKQ';
+            inputDataEl.value = state.data || '';
+        }
+    }
+
+    // --- INITIALIZATION & EVENT LISTENERS ---
+    
+    // Form input listeners
+    [inputDataEl, defaultPoEl, confirmationNumberEl, defaultSupplierEl].forEach(el => {
+        el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', debouncedRenderPreview);
+    });
+    
+    // Initial page setup
+    document.addEventListener('DOMContentLoaded', () => {
+        loadState();
+        renderToggleControls();
+        renderPreview();
+        updateTotals();
+    });
+  </script>
 </body>
 </html>
