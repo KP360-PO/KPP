@@ -278,8 +278,17 @@
         ["Memo","Memo"] // CHANGED to read Memo
       ];
       map.forEach(([header, key]) => {
-        let val = key ? (row[key] || '') : '';
+        let val = '';
+
+        if (header === "Carrier Fee") {
+          const fee = row["Rate"];
+          val = (fee !== undefined && fee !== null && fee !== '' ? fee : 0);
+        } else if (key) {
+          val = row[key] || '';
+        }
+
         if (header === "Service") val = (val+'').replace(/®/g,'');
+
         const td = document.createElement('td'); td.textContent = val; tr.appendChild(td);
       });
       return tr;
@@ -379,7 +388,7 @@
       // Item lines (dedup & qty bump)
       cfUnique.forEach(val => {
         const qty = baseQty * (cfCounts[val] || 1);
-        lines.push({...common, "Custom Field 1": val, "Custom Field 2": "", "Custom Field 3": "", "Quantity": qty, "Rate":"", "Service":"", "Tracking Number":"" , "Memo": orderMemoDefault});
+        lines.push({...common, "Custom Field 1": val, "Custom Field 2": "", "Custom Field 3": "", "Quantity": qty, "Rate": common["Rate"], "Service":"", "Tracking Number":"" , "Memo": orderMemoDefault});
       });
 
       // Shipping lines (single or multi)
@@ -450,7 +459,7 @@ if (!hasJWL) {
         "Custom Field 3": r["Custom Field 3"] || "",
         "Order Total": r["Order Total"] || "",
         "Recipient": r["Recipient"] || "",
-        "Carrier Fee": r["Rate"] || "",
+        "Carrier Fee": (r["Rate"] !== undefined && r["Rate"] !== null && r["Rate"] !== '' ? r["Rate"] : 0),
         "Service": (r["Service"] || ""),
         "Tracking Number": r["Tracking Number"] || "",
         "PO Reference Number": r["PO Number"] || "",
@@ -637,7 +646,7 @@ if (!hasJWL) {
           "Custom Field 3": r["Custom Field 3"] || "",
           "Order Total": r["Order Total"] || "",
           "Recipient": r["Recipient"] || "",
-          "Carrier Fee": r["Rate"] || "",
+          "Carrier Fee": (r["Rate"] !== undefined && r["Rate"] !== null && r["Rate"] !== '' ? r["Rate"] : 0),
           "Service": (r["Service"] || ""),
           "Tracking Number": r["Tracking Number"] || "",
           "PO Reference Number": r["PO Number"] || "",
@@ -691,6 +700,7 @@ if (!hasJWL) {
   }
 
   function hasSkuPLXorPAIR(s){ s = String(s||'').toUpperCase(); return /\bPLX\b/.test(s) || /\bPAIR\b/.test(s); }
+  function hasSkuFBA(s){s = String(s||'').toUpperCase();return /(^|[^A-Z0-9])FBA([^A-Z0-9]|$)/.test(s);}
 
   function buildHeaderMap(table){
     const map = {};
@@ -741,7 +751,9 @@ if (!hasJWL) {
         if (idx.CF1 != null && isEmpty(val.cf1)) getCell(tr, idx.CF1)?.classList.add('kp-hl-red');
         if (idx.ITEM_SKU != null && idx.CF2 != null && hasSkuPLXorPAIR(val.itemSku) && isEmpty(val.cf2)) getCell(tr, idx.CF2)?.classList.add('kp-hl-red');
         const isVendorPO = /\bUSAUTO\b|\bUS AUTO\b|\bMEYER\b|\bTONSA\b/i.test(val.shipFrom || '');
-        if (idx.PO_NUM != null && !isVendorPO && isEmpty(val.po)) getCell(tr, idx.PO_NUM)?.classList.add('kp-hl-red');
+        const isFBAOrder = hasSkuFBA(val.itemSku);
+        if (idx.PO_NUM != null && !isVendorPO && !isFBAOrder && isEmpty(val.po)) {getCell(tr, idx.PO_NUM)?.classList.add('kp-hl-red');}
+
 
         let allowYellow = true;
         const cf1Upper = norm(val.cf1);
@@ -1134,7 +1146,9 @@ if (!hasJWL) {
       if (td._kpTipBound) return;
       td._kpTipBound = true;
       td.addEventListener('mouseenter', function(ev){
-        var html = td.parentNode.classList.contains('kp-row-warn') ? reasonForRow(td.parentNode) : reasonForCell(td);
+        var html = td.parentNode.classContains && td.parentNode.classContains('kp-row-warn')
+          ? reasonForRow(td.parentNode)
+          : reasonForCell(td);
         showTip(td, html); positionTip(ev);
       });
       td.addEventListener('mousemove', positionTip);
