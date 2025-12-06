@@ -48,425 +48,641 @@
   <span class="author">By: Christine Anastacio</span>
 </header>
 
-  <div class="controls">
-    <div class="controls-row">
-      <div class="left-group">
-        <input type="file" id="files" accept=".csv,.xls,.xlsx" multiple>
-        <input type="text" id="poInput" placeholder="KEMA PO Number">
-        <button id="addPoBtn">Add</button>
-        <div class="filter-group">
-          <button type="button" class="filter-btn" id="filterToggle">Filters ▾</button>
-          <div class="filter-tags" id="activeFilters"></div>
-          <div class="filter-popover" id="filterPopover">
-            <div style="display:flex; align-items:center; margin-bottom:6px;">
-              <strong style="font-size:0.9rem;">Filters</strong>
-              <button class="close-popover" id="closeFilter">×</button>
-            </div>
-            <label><input type="checkbox" id="excludeShipping"> Exclude Shipping (WD)</label>
-            <label><input type="checkbox" id="showSoNumber" disabled> Show SO Number</label>
-            <label><input type="checkbox" id="showDocNumber" disabled> Show Document Number</label>
-            <label><input type="checkbox" id="filterPLXPAIR"> PLX/PAIR SKU</label>
+<div class="controls">
+  <div class="controls-row">
+    <div class="left-group">
+      <input type="file" id="files" accept=".csv,.xls,.xlsx" multiple>
+      <input type="text" id="poInput" placeholder="KEMA PO Number">
+      <button id="addPoBtn">Add</button>
+      <div class="filter-group">
+        <button type="button" class="filter-btn" id="filterToggle">Filters ▾</button>
+        <div class="filter-tags" id="activeFilters"></div>
+        <div class="filter-popover" id="filterPopover">
+          <div style="display:flex; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:0.9rem;">Filters</strong>
+            <button class="close-popover" id="closeFilter">×</button>
           </div>
+          <label><input type="checkbox" id="excludeShipping"> Exclude Shipping (WD) and Shipping Cost</label>
+          <label><input type="checkbox" id="showSoNumber" disabled> Show SO Number</label>
+          <label><input type="checkbox" id="showDocNumber" disabled> Show Document Number</label>
+          <label><input type="checkbox" id="filterPLXPAIR"> PLX/PAIR SKU</label>
         </div>
       </div>
-      <div class="right-group">
-        <input type="text" id="filenameInput" placeholder="Filename" disabled>
-        <button id="downloadBtn" disabled>Download Report</button>
-        <button id="resetBtn" disabled>⟲</button>
-      </div>
+    </div>
+    <div class="right-group">
+      <input type="text" id="filenameInput" placeholder="Filename" disabled>
+      <button id="downloadBtn" disabled>Download Report</button>
+      <button id="resetBtn" disabled>⟲</button>
     </div>
   </div>
+</div>
 
-  <main>
-    <div id="totalOrders">Total Orders: 0</div>
-    <div id="report"></div>
-  </main>
+<main>
+  <div id="totalOrders">Total Orders: 0</div>
+  <div id="report"></div>
+</main>
 
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script>
-    const baseHeaders = [ "Date - Order Date", "Order - Number", "Item - SKU", "Item - Qty", "Custom - Field 1", "Custom - Field 2", "Custom - Field 3", "Ship To - Name", "PO Number", "Reference PO", "Carrier", "Carrier Fee", "Tracking Number", "Location" ];
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  const baseHeaders = [
+    "Date - Order Date",
+    "Order - Number",
+    "Item - SKU",
+    "Item - Qty",
+    "Custom - Field 1",
+    "Ship To - Name",
+    "PO Number",
+    "Reference PO",
+    "Carrier",
+    "Carrier Fee",
+    "Shipping Cost",    // NEW COLUMN
+    "Tracking Number",
+    "Location"
+  ];
 
-    // --- SO-only Document Number
-    const synonyms = {
-      "Order #":      "Order - Number",
-      "Order Number": "Order - Number",
-      "Tracking #":   "Tracking Number"
-    };
-    function extractSO(val) {
-      const s = String(val || "").toUpperCase().trim();
-      const m = s.match(/^SO-?\d+/);
-      return m ? m[0] : "";
-    }
+  // --- SO-only Document Number
+  const synonyms = {
+    "Order #":      "Order - Number",
+    "Order Number": "Order - Number",
+    "Tracking #":   "Tracking Number"
+  };
 
-    function deriveLocationFromRef(ref) {
-      const s = String(ref || "").toUpperCase();
-      if (s.includes("NJ")) return "New Jersey Distribution Warehouse";
-      if (s.includes("IL")) return "Chicago Distribution Warehouse";
-      if (s.includes("GA")) return "Georgia Distribution Warehouse";
-      if (s.includes("CA")) return "California Distribution Warehouse";
-      return "";
-    }
+  function extractSO(val) {
+    const s = String(val || "").toUpperCase().trim();
+    const m = s.match(/^SO-?\d+/);
+    return m ? m[0] : "";
+  }
 
-    const el = id => document.getElementById(id);
-    const files = el("files");
-    const poInput = el("poInput");
-    const addPoBtn = el("addPoBtn");
-    const resetBtn = el("resetBtn");
-    const filenameInput = el("filenameInput");
-    const downloadBtn = el("downloadBtn");
-    const excludeShipping = el("excludeShipping");
-    const showSoNumber = el("showSoNumber");
-    const showDocNumber = el("showDocNumber");
-    const filterPLXPAIR = el("filterPLXPAIR");
-    const totalOrders = el("totalOrders");
-    const report = el("report");
-    const filterToggle = el("filterToggle");
-    const filterPopover = el("filterPopover");
-    const closeFilter = el("closeFilter");
-    const activeFilters = el("activeFilters");
+  // Heuristic: typical Partslink style = 2 letters + 7 digits, e.g. "HO2502107"
+  function isPartslinkSku(sku) {
+    const plain = String(sku || "").replace(/^LKQ-/i, "").trim();
+    return /^[A-Z]{2}\d{7}$/i.test(plain);
+  }
 
-    function sanitize(s){ return s.replace(/[®\\]/g, ""); }
+  function deriveLocationFromRef(ref) {
+    const s = String(ref || "").toUpperCase();
+    if (s.includes("NJ")) return "New Jersey Distribution Warehouse";
+    if (s.includes("IL")) return "Chicago Distribution Warehouse";
+    if (s.includes("GA")) return "Georgia Distribution Warehouse";
+    if (s.includes("CA")) return "California Distribution Warehouse";
+    return "";
+  }
 
-    // --- Persist edits (incl. refresh) ---
-    const STORAGE_KEY = "kema_cellEdits_v2";
-    let cellEdits = {}; // { [order]: { general:{}, shipping:{} } }
-    function loadEdits() { try { const s = localStorage.getItem(STORAGE_KEY); if (s) cellEdits = JSON.parse(s) || {}; } catch(e) {} }
-    function persistEdits() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cellEdits)); } catch(e) {} }
-    function ensureEditBucket(order) { cellEdits[order] = cellEdits[order] || { general: {}, shipping: {} }; return cellEdits[order]; }
-    loadEdits();
+  const el = id => document.getElementById(id);
+  const files = el("files");
+  const poInput = el("poInput");
+  const addPoBtn = el("addPoBtn");
+  const resetBtn = el("resetBtn");
+  const filenameInput = el("filenameInput");
+  const downloadBtn = el("downloadBtn");
+  const excludeShipping = el("excludeShipping");
+  const showSoNumber = el("showSoNumber");
+  const showDocNumber = el("showDocNumber");
+  const filterPLXPAIR = el("filterPLXPAIR");
+  const totalOrders = el("totalOrders");
+  const report = el("report");
+  const filterToggle = el("filterToggle");
+  const filterPopover = el("filterPopover");
+  const closeFilter = el("closeFilter");
+  const activeFilters = el("activeFilters");
 
-    let masterFile = null, deltaFiles = [], rawData = [], currentData = [], historyStack = [];
-    function pushHistory() { historyStack.push(JSON.parse(JSON.stringify(currentData))); resetBtn.disabled = true ? false : false; resetBtn.disabled = false; }
+  function sanitize(s){ return s.replace(/[®\\]/g, ""); }
 
-    function updateFilterTags() {
-      activeFilters.innerHTML = "";
-      const tags = [];
-      if (excludeShipping.checked) tags.push("No Shipping (WD)");
-      if (showSoNumber.checked) tags.push("SO #");
-      if (showDocNumber.checked) tags.push("Doc #");
-      if (filterPLXPAIR.checked) tags.push("PLX/PAIR");
-      tags.forEach(t => { const span = document.createElement("span"); span.className = "tag"; span.textContent = t; activeFilters.appendChild(span); });
-    }
+  // --- Persist edits (incl. refresh) ---
+  const STORAGE_KEY = "kema_cellEdits_v2";
+  let cellEdits = {}; // { [order]: { general:{}, shipping:{} } }
+  function loadEdits() {
+    try {
+      const s = localStorage.getItem(STORAGE_KEY);
+      if (s) cellEdits = JSON.parse(s) || {};
+    } catch(e) {}
+  }
+  function persistEdits() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cellEdits));
+    } catch(e) {}
+  }
+  function ensureEditBucket(order) {
+    cellEdits[order] = cellEdits[order] || { general: {}, shipping: {} };
+    return cellEdits[order];
+  }
+  loadEdits();
 
-    async function parseFile(file) {
-      if (/\.csv$/i.test(file.name)) {
-        return new Promise(res => Papa.parse(file, { header: true, skipEmptyLines: true, complete: ({data}) => res(data) }));
-      } else {
-        return new Promise(res => {
-          const fr = new FileReader();
-          fr.onload = e => { const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' }); res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:"" })); };
-          fr.readAsArrayBuffer(file);
-        });
-      }
-    }
+  let masterFile = null, deltaFiles = [], rawData = [], currentData = [], historyStack = [];
+  function pushHistory() {
+    historyStack.push(JSON.parse(JSON.stringify(currentData)));
+    resetBtn.disabled = true ? false : false;
+    resetBtn.disabled = false;
+  }
 
-    function normalizeRow(row) {
-      const r = {...row};
-      if (r.Service) r.Carrier = r.Service;
+  function updateFilterTags() {
+    activeFilters.innerHTML = "";
+    const tags = [];
+    if (excludeShipping.checked) tags.push("No Shipping (WD)");
+    if (showSoNumber.checked) tags.push("SO #");
+    if (showDocNumber.checked) tags.push("Doc #");
+    if (filterPLXPAIR.checked) tags.push("PLX/PAIR");
+    tags.forEach(t => {
+      const span = document.createElement("span");
+      span.className = "tag";
+      span.textContent = t;
+      activeFilters.appendChild(span);
+    });
+  }
 
-      Object.entries(synonyms).forEach(([from,to]) => {
-        if (r[from]!=null && (!r[to]||String(r[to]).trim()==="")) r[to] = r[from];
+  async function parseFile(file) {
+    if (/\.csv$/i.test(file.name)) {
+      return new Promise(res => Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: ({data}) => res(data)
+      }));
+    } else {
+      return new Promise(res => {
+        const fr = new FileReader();
+        fr.onload = e => {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+          res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:"" }));
+        };
+        fr.readAsArrayBuffer(file);
       });
+    }
+  }
 
-      if (r["Date - Order Date"]) {
-        const d = new Date(r["Date - Order Date"]);
-        if (!isNaN(d)) r["Date - Order Date"] = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
-      }
+  function normalizeRow(row) {
+    const r = {...row};
+    if (r.Service) r.Carrier = r.Service;
 
-      Object.keys(r).forEach(k => { if (typeof r[k] === "string") r[k] = sanitize(r[k]); });
+    Object.entries(synonyms).forEach(([from,to]) => {
+      if (r[from]!=null && (!r[to]||String(r[to]).trim()==="")) r[to] = r[from];
+    });
 
-      const docCandidate = r["DOCUMENT NUMBER"] ?? r["Document Number"] ?? r["Document #"] ?? "";
-      r["DOCUMENT NUMBER"] = extractSO(docCandidate);
-
-      if (r["Reference PO"]) r.Location = deriveLocationFromRef(r["Reference PO"]);
-      return r;
+    if (r["Date - Order Date"]) {
+      const d = new Date(r["Date - Order Date"]);
+      if (!isNaN(d)) r["Date - Order Date"] = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
     }
 
-    function getActiveHeaders() {
-      const h = [...baseHeaders];
-      if (showSoNumber.checked) { const idx = h.indexOf("Order - Number"); h.splice(idx + 1, 0, "SO NUMBER"); }
-      if (showDocNumber.checked) { let idx = h.indexOf("SO NUMBER"); if (idx === -1) idx = h.indexOf("Order - Number"); h.splice(idx + 1, 0, "DOCUMENT NUMBER"); }
-      return h;
+    Object.keys(r).forEach(k => {
+      if (typeof r[k] === "string") r[k] = sanitize(r[k]);
+    });
+
+    const docCandidate = r["DOCUMENT NUMBER"] ?? r["Document Number"] ?? r["Document #"] ?? "";
+    r["DOCUMENT NUMBER"] = extractSO(docCandidate);
+
+    if (r["Reference PO"]) r.Location = deriveLocationFromRef(r["Reference PO"]);
+    return r;
+  }
+
+function getActiveHeaders() {
+  let h = [...baseHeaders];
+
+  // ❗ Remove Shipping Cost column when Exclude Shipping (WD) and Shipping Cost is checked
+  if (excludeShipping.checked) {
+    h = h.filter(col => col !== "Shipping Cost");
+  }
+
+  if (showSoNumber.checked) {
+    const idx = h.indexOf("Order - Number");
+    h.splice(idx + 1, 0, "SO NUMBER");
+  }
+
+  if (showDocNumber.checked) {
+    let idx = h.indexOf("SO NUMBER");
+    if (idx === -1) idx = h.indexOf("Order - Number");
+    h.splice(idx + 1, 0, "DOCUMENT NUMBER");
+  }
+
+  return h;
+}
+
+
+  function applyBucketsToRow(r, bucket) {
+    Object.entries(bucket.general).forEach(([k,v]) => { r[k] = v; });
+    if (r["Custom - Field 1"] === "Shipping (WD)") {
+      Object.entries(bucket.shipping).forEach(([k,v]) => { r[k] = v; });
     }
+  }
 
-    function applyBucketsToRow(r, bucket) {
-      Object.entries(bucket.general).forEach(([k,v]) => { r[k] = v; });
-      if (r["Custom - Field 1"] === "Shipping (WD)") Object.entries(bucket.shipping).forEach(([k,v]) => { r[k] = v; });
-    }
+  async function rebuildReport() {
+    if (!masterFile) return;
 
-    async function rebuildReport() {
-      if (!masterFile) return;
-      const masterRows = (await parseFile(masterFile)).map(normalizeRow);
-      const masterOrders = new Set(masterRows.map(r => r["Order - Number"]));
-      let data = masterRows.slice();
+    const masterRows = (await parseFile(masterFile)).map(normalizeRow);
+    const masterOrders = new Set(masterRows.map(r => r["Order - Number"]));
+    let data = masterRows.slice();
 
-      for (let i = 0; i < deltaFiles.length; i++) {
-        const rows = (await parseFile(deltaFiles[i])).map(normalizeRow);
+    // --- Merge delta files into master
+    for (let i = 0; i < deltaFiles.length; i++) {
+      const rows = (await parseFile(deltaFiles[i])).map(normalizeRow);
 
-        rows.forEach(r => {
-          if (!masterOrders.has(r["Order - Number"])) return;
-          const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
-          const poFromOther = (r["PO Number"] || "").toString().trim();
-          if ((!m["Reference PO"] || m["Reference PO"].toString().trim() === "") && poFromOther) {
-            m["Reference PO"] = poFromOther;
-            m.Location = deriveLocationFromRef(m["Reference PO"]);
-          }
-        });
-
-        const mergeCols = [...baseHeaders.filter(h => h !== "Order - Number" && h !== "PO Number"), "SO NUMBER", "DOCUMENT NUMBER"];
-        rows.forEach(r => {
-          if (!masterOrders.has(r["Order - Number"])) return;
-          const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
-          mergeCols.forEach(col => {
-            if ((!m[col]||String(m[col]).trim()==="") && r[col]) {
-              if (col === "DOCUMENT NUMBER") {
-                const so = extractSO(r[col]); if (so) m[col] = so;
-              } else { m[col] = r[col]; }
-            }
-          });
-          if (m["Reference PO"]) m.Location = deriveLocationFromRef(m["Reference PO"]);
-        });
-      }
-
-      const grouped = {};
-      data.forEach(r => { (grouped[r["Order - Number"]] = grouped[r["Order - Number"]]||[]).push(r); });
-      let interim = [];
-      Object.values(grouped).forEach(g => {
-        if (g.length > 1) {
-          g.forEach(r => {
-            const cf2 = r["Custom - Field 2"] || "";
-            if (String(cf2).trim()) r["Custom - Field 1"] = cf2;
-            r["Custom - Field 2"] = "";
-            interim.push(r);
-          });
-        } else {
-          const o = g[0], cf2 = o["Custom - Field 2"] || "";
-          interim.push({...o, "Custom - Field 2": ""});
-          if (String(cf2).trim()) interim.push({...o, "Custom - Field 1": cf2, "Custom - Field 2": ""});
+      // Fill Reference PO / Location from other files
+      rows.forEach(r => {
+        if (!masterOrders.has(r["Order - Number"])) return;
+        const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
+        const poFromOther = (r["PO Number"] || "").toString().trim();
+        if ((!m["Reference PO"] || m["Reference PO"].toString().trim() === "") && poFromOther) {
+          m["Reference PO"] = poFromOther;
+          m.Location = deriveLocationFromRef(m["Reference PO"]);
         }
       });
 
-      const byOrder = {};
-      interim.forEach(r => { (byOrder[r["Order - Number"]] = byOrder[r["Order - Number"]]||[]).push(r); });
-      let finalData = [];
-      Object.values(byOrder).forEach(g => {
-        g.forEach(r => finalData.push(r));
-        const tpl = g[0];
-        finalData.push({...tpl, "Custom - Field 1": "Shipping (WD)", "Custom - Field 2": ""});
+      // Merge other columns
+      const mergeCols = [
+        ...baseHeaders.filter(h => h !== "Order - Number" && h !== "PO Number"),
+        "SO NUMBER",
+        "DOCUMENT NUMBER"
+      ];
+
+      rows.forEach(r => {
+        if (!masterOrders.has(r["Order - Number"])) return;
+        const m = data.find(x => x["Order - Number"] === r["Order - Number"]);
+
+        mergeCols.forEach(col => {
+          if ((!m[col] || String(m[col]).trim() === "") && r[col]) {
+            if (col === "DOCUMENT NUMBER") {
+              const so = extractSO(r[col]);
+              if (so) m[col] = so;
+            } else {
+              m[col] = r[col];
+            }
+          }
+        });
+
+        if (m["Reference PO"]) m.Location = deriveLocationFromRef(m["Reference PO"]);
       });
-      finalData = finalData.map(r => {
-        if (r["Custom - Field 1"] !== "Shipping (WD)") { r.Carrier = ""; r["Carrier Fee"] = ""; r["Tracking Number"] = ""; }
-        return r;
-      });
-
-      finalData.forEach(r => {
-        const doc = r["DOCUMENT NUMBER"] || "";
-        if (showSoNumber.checked && doc) r["SO NUMBER"] = `Sales Order #${doc}`;
-        else delete r["SO NUMBER"];
-      });
-
-      finalData.forEach(r => { if (r["Reference PO"]) r.Location = deriveLocationFromRef(r["Reference PO"]); });
-
-      finalData.forEach(r => { r["PO Number"] = ""; });
-
-      rawData = finalData;
-
-      rawData.forEach(r => {
-        const order = r["Order - Number"];
-        const ce = cellEdits[order];
-        if (!ce) return;
-        applyBucketsToRow(r, ce);
-      });
-
-      ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"].forEach(id => el(id).disabled = false);
-
-      historyStack = [];
-      renderTable();
-      updateFilterTags();
     }
 
-    function makeCellsEditableAndHook() {
-      const headers = getActiveHeaders();
-      const cf1Idx = headers.indexOf("Custom - Field 1");
-      const baseEditableIdxs = ["Reference PO","Location","PO Number"].map(h => headers.indexOf(h)).filter(i => i >= 0);
-      const shippingIdxs = ["Carrier","Carrier Fee","Tracking Number"].map(h => headers.indexOf(h)).filter(i => i >= 0);
+    // --- Handle Custom Field 2 → extra lines logic (existing behavior)
+    const grouped = {};
+    data.forEach(r => {
+      (grouped[r["Order - Number"]] = grouped[r["Order - Number"]] || []).push(r);
+    });
 
-      report.querySelectorAll("tbody tr").forEach((tr) => {
-        // ✅ Use dataset instead of reading textContent (avoids 📦×N noise)
-        const order = tr.dataset.order || "";
-        const isShipRow = tr.dataset.isshipping === "1";
-        const editableCols = [...baseEditableIdxs, ...(isShipRow ? shippingIdxs : [])];
+    let interim = [];
+    Object.values(grouped).forEach(g => {
+      if (g.length > 1) {
+        g.forEach(r => {
+          const cf2 = r["Custom - Field 2"] || "";
+          if (String(cf2).trim()) r["Custom - Field 1"] = cf2;
+          r["Custom - Field 2"] = "";
+          interim.push(r);
+        });
+      } else {
+        const o = g[0];
+        const cf2 = o["Custom - Field 2"] || "";
+        interim.push({ ...o, "Custom - Field 2": "" });
+        if (String(cf2).trim()) {
+          interim.push({ ...o, "Custom - Field 1": cf2, "Custom - Field 2": "" });
+        }
+      }
+    });
 
-        editableCols.forEach(colIdx => {
-          const td = tr.children[colIdx];
-          if (!td) return;
+    // --- Group by order again and:
+    //     1) DEDUPE lines with same SKU + CF1, summing QTY
+    //     2) Add one Shipping (WD) line per order
+    const byOrder = {};
+    interim.forEach(r => {
+      (byOrder[r["Order - Number"]] = byOrder[r["Order - Number"]] || []).push(r);
+    });
 
-          td.contentEditable = "true";
-          td.classList.add("editable");
+    let finalData = [];
 
-          td.removeEventListener("input", td._onInputHandler);
-          td.removeEventListener("blur", td._onBlurHandler);
+    Object.values(byOrder).forEach(g => {
+      // 2️⃣ RULE: If the CFs has the same value, only show 1 line and update QTY
+      const map = new Map();
+      g.forEach(r => {
+        const sku = (r["Item - SKU"] || "").toString();
+        const cf1 = (r["Custom - Field 1"] || "").toString();
+        const key = `${sku}||${cf1}`;
+        if (!map.has(key)) {
+          map.set(key, { ...r });
+        } else {
+          const existing = map.get(key);
+          const q1 = parseFloat(existing["Item - Qty"] || 0) || 0;
+          const q2 = parseFloat(r["Item - Qty"] || 0) || 0;
+          existing["Item - Qty"] = (q1 + q2).toString();
+        }
+      });
 
-          td._onInputHandler = function () {
-            const newVal = td.textContent.trim();
-            const colName = headers[colIdx];
-            if (!order) return;
+      const dedupedLines = Array.from(map.values());
+      dedupedLines.forEach(r => finalData.push(r));
 
-            const bucket = ensureEditBucket(order);
-            const toShipping = (isShipRow || ["Carrier","Carrier Fee","Tracking Number"].includes(colName));
-            if (toShipping) {
-              bucket.shipping[colName] = newVal;
-            } else {
-              bucket.general[colName] = newVal;
-              if (colName === "Reference PO" && !("Location" in bucket.general)) {
-                bucket.general["Location"] = deriveLocationFromRef(newVal);
-                const locIdx = headers.indexOf("Location");
-                if (locIdx >= 0 && tr.children[locIdx]) tr.children[locIdx].textContent = bucket.general["Location"];
+      // Shipping row template (use first deduped line)
+      const tpl = dedupedLines[0];
+      finalData.push({
+        ...tpl,
+        "Custom - Field 1": "Shipping (WD)",
+        "Custom - Field 2": ""
+      });
+    });
+
+    // --- Capture Carrier Fee by order before clearing on SKU lines
+    const feeByOrder = {};
+    finalData.forEach(r => {
+      const order = r["Order - Number"] || "";
+      const fee = (r["Carrier Fee"] || "").toString().trim();
+      if (order && fee && !feeByOrder[order]) {
+        feeByOrder[order] = fee;
+      }
+    });
+
+    // --- Clear Carrier / Carrier Fee / Tracking Number on non-Shipping rows
+    finalData = finalData.map(r => {
+      if (r["Custom - Field 1"] !== "Shipping (WD)") {
+        r.Carrier = "";
+        r["Carrier Fee"] = "";
+        r["Tracking Number"] = "";
+      }
+      return r;
+    });
+
+    // --- 3️⃣ RULE: If the CFs SKU is a partslink, prefix LKQ-
+    finalData.forEach(r => {
+      if (r["Custom - Field 1"] === "Shipping (WD)") return;
+      const sku = (r["Item - SKU"] || "").toString().trim();
+      if (!sku) return;
+      if (/^LKQ-/i.test(sku)) return; // already prefixed
+      if (isPartslinkSku(sku)) {
+        r["Item - SKU"] = "LKQ-" + sku.replace(/^LKQ-/i, "");
+      }
+    });
+
+    // --- 1️⃣ RULE: Shipping Cost column using Carrier Fee, SKU lines only
+    finalData.forEach(r => {
+      const order = r["Order - Number"] || "";
+      const fee = feeByOrder[order] || "";
+      if (r["Custom - Field 1"] === "Shipping (WD)") {
+        r["Shipping Cost"] = "";  // no value on Shipping (WD) line
+      } else {
+        r["Shipping Cost"] = fee; // apply Carrier Fee here on the SKU line
+      }
+    });
+
+    // --- Populate SO NUMBER from DOCUMENT NUMBER when requested
+    finalData.forEach(r => {
+      const doc = r["DOCUMENT NUMBER"] || "";
+      if (showSoNumber.checked && doc) {
+        r["SO NUMBER"] = `Sales Order #${doc}`;
+      } else {
+        delete r["SO NUMBER"];
+      }
+    });
+
+    // --- Keep Location from Reference PO & clear PO Number before export
+    finalData.forEach(r => {
+      if (r["Reference PO"]) {
+        r.Location = deriveLocationFromRef(r["Reference PO"]);
+      }
+      r["PO Number"] = "";
+    });
+
+    // Save to rawData so filters / edits work on the latest structure
+    rawData = finalData;
+
+    // Re-apply stored edits
+    rawData.forEach(r => {
+      const order = r["Order - Number"];
+      const ce = cellEdits[order];
+      if (!ce) return;
+      applyBucketsToRow(r, ce);
+    });
+
+    ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"]
+      .forEach(id => el(id).disabled = false);
+
+    historyStack = [];
+    renderTable();
+    updateFilterTags();
+  }
+
+  function makeCellsEditableAndHook() {
+    const headers = getActiveHeaders();
+    const cf1Idx = headers.indexOf("Custom - Field 1");
+    const baseEditableIdxs = ["Reference PO","Location","PO Number"]
+      .map(h => headers.indexOf(h))
+      .filter(i => i >= 0);
+    const shippingIdxs = ["Carrier","Carrier Fee","Tracking Number"]
+      .map(h => headers.indexOf(h))
+      .filter(i => i >= 0);
+
+    report.querySelectorAll("tbody tr").forEach((tr) => {
+      const order = tr.dataset.order || "";
+      const isShipRow = tr.dataset.isshipping === "1";
+      const editableCols = [...baseEditableIdxs, ...(isShipRow ? shippingIdxs : [])];
+
+      editableCols.forEach(colIdx => {
+        const td = tr.children[colIdx];
+        if (!td) return;
+
+        td.contentEditable = "true";
+        td.classList.add("editable");
+
+        td.removeEventListener("input", td._onInputHandler);
+        td.removeEventListener("blur", td._onBlurHandler);
+
+        td._onInputHandler = function () {
+          const newVal = td.textContent.trim();
+          const colName = headers[colIdx];
+          if (!order) return;
+
+          const bucket = ensureEditBucket(order);
+          const toShipping = (isShipRow || ["Carrier","Carrier Fee","Tracking Number"].includes(colName));
+          if (toShipping) {
+            bucket.shipping[colName] = newVal;
+          } else {
+            bucket.general[colName] = newVal;
+            if (colName === "Reference PO" && !("Location" in bucket.general)) {
+              bucket.general["Location"] = deriveLocationFromRef(newVal);
+              const locIdx = headers.indexOf("Location");
+              if (locIdx >= 0 && tr.children[locIdx]) {
+                tr.children[locIdx].textContent = bucket.general["Location"];
               }
             }
+          }
 
-            rawData.forEach(r => { if (r["Order - Number"] === order) applyBucketsToRow(r, bucket); });
-            currentData.forEach(r => { if (r["Order - Number"] === order) applyBucketsToRow(r, bucket); });
+          rawData.forEach(r => {
+            if (r["Order - Number"] === order) applyBucketsToRow(r, bucket);
+          });
+          currentData.forEach(r => {
+            if (r["Order - Number"] === order) applyBucketsToRow(r, bucket);
+          });
 
-            persistEdits();
-          };
+          persistEdits();
+        };
 
-          td._onBlurHandler = function () {
-            pushHistory();
-            // re-render not strictly required, but keeps rows in sync when an edit affects all lines of the order
-            renderTable();
-          };
+        td._onBlurHandler = function () {
+          pushHistory();
+          renderTable();
+        };
 
-          td.addEventListener("input", td._onInputHandler);
-          td.addEventListener("blur", td._onBlurHandler);
-        });
+        td.addEventListener("input", td._onInputHandler);
+        td.addEventListener("blur", td._onBlurHandler);
+      });
+    });
+  }
+
+  function renderTable() {
+    const headers = getActiveHeaders();
+    let rows = excludeShipping.checked
+      ? rawData.filter(r => r["Custom - Field 1"] !== "Shipping (WD)")
+      : rawData;
+
+    if (filterPLXPAIR.checked) {
+      rows = rows.filter(r => {
+        const sku = (r["Item - SKU"] || "").toString().toUpperCase();
+        return sku.includes("PLX") || sku.includes("PAIR");
       });
     }
 
-    function renderTable() {
-      const headers = getActiveHeaders();
-      let rows = excludeShipping.checked ? rawData.filter(r => r["Custom - Field 1"] !== "Shipping (WD)") : rawData;
+    currentData = rows;
+    totalOrders.textContent = `Total Orders: ${new Set(rows.map(r => r["Order - Number"])).size}`;
 
-      if (filterPLXPAIR.checked) {
-        rows = rows.filter(r => {
-          const sku = (r["Item - SKU"] || "").toString().toUpperCase();
-          return sku.includes("PLX") || sku.includes("PAIR");
-        });
-      }
-
-      currentData = rows;
-      totalOrders.textContent = `Total Orders: ${new Set(rows.map(r => r["Order - Number"])).size}`;
-
-      const counts = {};
-      rawData.filter(r => r["Custom - Field 1"] !== "Shipping (WD)").forEach(r => {
-        const o = r["Order - Number"]; counts[o] = (counts[o] || 0) + 1;
+    const counts = {};
+    rawData
+      .filter(r => r["Custom - Field 1"] !== "Shipping (WD)")
+      .forEach(r => {
+        const o = r["Order - Number"];
+        counts[o] = (counts[o] || 0) + 1;
       });
 
-      const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>`;
-      const tbodyRows = rows.map(r => {
-        const order = r["Order - Number"] || "";
-        const cnt = counts[order] || 1;
-        const isShip = r["Custom - Field 1"] === "Shipping (WD)";
-        return `<tr data-order="${order.replace(/"/g,'&quot;')}" data-isshipping="${isShip ? "1" : "0"}">${
-          headers.map(h => {
-            let cell = r[h] || "";
-            if (h === "Order - Number") {
-              if (cnt > 1) cell = `${cell}<span class="multi-line-indicator">📦×${cnt}</span>`;
-            }
-            return `<td>${cell}</td>`;
-          }).join("")
-        }</tr>`;
-      }).join("");
+    const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>`;
+    const tbodyRows = rows.map(r => {
+      const order = r["Order - Number"] || "";
+      const cnt = counts[order] || 1;
+      const isShip = r["Custom - Field 1"] === "Shipping (WD)";
+      return `<tr data-order="${order.replace(/"/g,'&quot;')}" data-isshipping="${isShip ? "1" : "0"}">${
+        headers.map(h => {
+          let cell = r[h] || "";
+          if (h === "Order - Number") {
+            if (cnt > 1) cell = `${cell}<span class="multi-line-indicator">📦×${cnt}</span>`;
+          }
+          return `<td>${cell}</td>`;
+        }).join("")
+      }</tr>`;
+    }).join("");
 
-      report.innerHTML = `<table>${thead}<tbody>${tbodyRows}</tbody></table>`;
-      makeCellsEditableAndHook();
-      updateFilterTags();
+    report.innerHTML = `<table>${thead}<tbody>${tbodyRows}</tbody></table>`;
+    makeCellsEditableAndHook();
+    updateFilterTags();
+  }
+
+  // Popover
+  filterToggle.addEventListener("click", e => {
+    e.stopPropagation();
+    filterPopover.style.display = filterPopover.style.display === "block" ? "none" : "block";
+  });
+  closeFilter.addEventListener("click", () => {
+    filterPopover.style.display = "none";
+  });
+  document.addEventListener("click", (e) => {
+    if (!filterPopover.contains(e.target) && e.target !== filterToggle) {
+      filterPopover.style.display = "none";
+    }
+  });
+
+  // File binding
+  files.addEventListener("change", async e => {
+    const fArr = [...e.target.files];
+    if (!masterFile && fArr.length) {
+      masterFile = fArr[0];
+      deltaFiles = fArr.slice(1);
+    } else {
+      fArr.forEach(f => {
+        if (masterFile && f.name === masterFile.name && f.size === masterFile.size) return;
+        if (!deltaFiles.find(x => x.name === f.name && x.size === f.size)) deltaFiles.push(f);
+      });
+    }
+    await rebuildReport();
+    e.target.value = "";
+  });
+
+  // Add PO → persist
+  addPoBtn.addEventListener("click", () => {
+    const po = poInput.value.trim();
+    if (!po) {
+      poInput.placeholder = "Enter KEMA PO Number";
+      poInput.style.borderColor = "red";
+      return;
+    }
+    pushHistory();
+    poInput.style.borderColor = "";
+
+    const visibleOrders = new Set(currentData.map(r => r["Order - Number"]).filter(Boolean));
+    if (visibleOrders.size === 0) return;
+
+    rawData.forEach(r => {
+      if (!visibleOrders.has(r["Order - Number"])) return;
+      const bucket = ensureEditBucket(r["Order - Number"]);
+      bucket.general["PO Number"] = po;
+      applyBucketsToRow(r, bucket);
+    });
+    currentData.forEach(r => {
+      if (!visibleOrders.has(r["Order - Number"])) return;
+      const bucket = ensureEditBucket(r["Order - Number"]);
+      applyBucketsToRow(r, bucket);
+    });
+    persistEdits();
+    renderTable();
+  });
+
+  poInput.addEventListener("input", () => poInput.style.borderColor = "");
+
+  [excludeShipping, showSoNumber, showDocNumber, filterPLXPAIR]
+    .forEach(ch => ch.addEventListener("change", renderTable));
+
+  // Export
+  downloadBtn.addEventListener("click", () => {
+    // ensure last keystroke is saved
+    if (document.activeElement && document.activeElement.isContentEditable) {
+      document.activeElement.blur();
     }
 
-    // Popover
-    filterToggle.addEventListener("click", e => { e.stopPropagation(); filterPopover.style.display = filterPopover.style.display === "block" ? "none" : "block"; });
-    closeFilter.addEventListener("click", () => { filterPopover.style.display = "none"; });
-    document.addEventListener("click", (e) => { if (!filterPopover.contains(e.target) && e.target !== filterToggle) filterPopover.style.display = "none"; });
+    const wb = XLSX.utils.book_new();
+    const headers = getActiveHeaders().map(h => (h ?? "").toString().trim());
 
-    // File binding
-    files.addEventListener("change", async e => {
-      const fArr = [...e.target.files];
-      if (!masterFile && fArr.length) { masterFile = fArr[0]; deltaFiles = fArr.slice(1); }
-      else {
-        fArr.forEach(f => {
-          if (masterFile && f.name === masterFile.name && f.size === masterFile.size) return;
-          if (!deltaFiles.find(x => x.name === f.name && x.size === f.size)) deltaFiles.push(f);
-        });
-      }
-      await rebuildReport();
-      e.target.value = "";
-    });
+    const emptyIdx = headers.findIndex(h => !h);
+    if (emptyIdx !== -1) {
+      alert(`Export blocked: header #${emptyIdx + 1} is blank. Please review getActiveHeaders().`);
+      return;
+    }
+    const dupeMap = new Map();
+    headers.forEach(h => dupeMap.set(h, (dupeMap.get(h) || 0) + 1));
+    const dupes = [...dupeMap.entries()].filter(([, c]) => c > 1).map(([h]) => h);
+    if (dupes.length) {
+      alert(`Export blocked: duplicate header(s) found -> ${dupes.join(", ")}`);
+      return;
+    }
 
-    // Add PO → persist
-    addPoBtn.addEventListener("click", () => {
-      const po = poInput.value.trim();
-      if (!po) { poInput.placeholder = "Enter KEMA PO Number"; poInput.style.borderColor = "red"; return; }
-      pushHistory();
-      poInput.style.borderColor = "";
+    const sanitizeCell = (v) => v == null ? "" : String(v).replace(/[\u0000-\u001F\u007F]/g, "").trim();
+    const rows = currentData.map(row => headers.map(h => sanitizeCell(row[h])));
+    const aoa = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+    range.e.c = headers.length - 1;
+    range.e.r = aoa.length - 1;
+    ws["!ref"] = XLSX.utils.encode_range(range);
+    ws["!cols"] = headers.map(() => ({ wch: 18 }));
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
 
-      const visibleOrders = new Set(currentData.map(r => r["Order - Number"]).filter(Boolean));
-      if (visibleOrders.size === 0) return;
+    let fname = filenameInput.value.trim() || "KEMA_Sales_Report";
+    if (!fname.toLowerCase().endsWith(".xlsx")) fname += ".xlsx";
+    XLSX.writeFile(wb, fname);
+  });
 
-      rawData.forEach(r => {
-        if (!visibleOrders.has(r["Order - Number"])) return;
-        const bucket = ensureEditBucket(r["Order - Number"]);
-        bucket.general["PO Number"] = po;
-        applyBucketsToRow(r, bucket);
-      });
-      currentData.forEach(r => {
-        if (!visibleOrders.has(r["Order - Number"])) return;
-        const bucket = ensureEditBucket(r["Order - Number"]);
-        applyBucketsToRow(r, bucket);
-      });
-      persistEdits();
-      renderTable();
-    });
-
-    poInput.addEventListener("input", () => poInput.style.borderColor = "");
-
-    [excludeShipping, showSoNumber, showDocNumber, filterPLXPAIR].forEach(ch => ch.addEventListener("change", renderTable));
-
-    // Export
-    downloadBtn.addEventListener("click", () => {
-      // ensure last keystroke is saved
-      if (document.activeElement && document.activeElement.isContentEditable) document.activeElement.blur();
-
-      const wb = XLSX.utils.book_new();
-      const headers = getActiveHeaders().map(h => (h ?? "").toString().trim());
-
-      const emptyIdx = headers.findIndex(h => !h);
-      if (emptyIdx !== -1) { alert(`Export blocked: header #${emptyIdx + 1} is blank. Please review getActiveHeaders().`); return; }
-      const dupeMap = new Map(); headers.forEach(h => dupeMap.set(h, (dupeMap.get(h) || 0) + 1));
-      const dupes = [...dupeMap.entries()].filter(([, c]) => c > 1).map(([h]) => h);
-      if (dupes.length) { alert(`Export blocked: duplicate header(s) found -> ${dupes.join(", ")}`); return; }
-
-      const sanitizeCell = (v) => v == null ? "" : String(v).replace(/[\u0000-\u001F\u007F]/g, "").trim();
-      const rows = currentData.map(row => headers.map(h => sanitizeCell(row[h])));
-      const aoa = [headers, ...rows];
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      const range = XLSX.utils.decode_range(ws["!ref"]);
-      range.e.c = headers.length - 1; range.e.r = aoa.length - 1; ws["!ref"] = XLSX.utils.encode_range(range);
-      ws["!cols"] = headers.map(() => ({ wch: 18 }));
-      XLSX.utils.book_append_sheet(wb, ws, "Report");
-
-      let fname = filenameInput.value.trim() || "KEMA_Sales_Report";
-      if (!fname.toLowerCase().endsWith(".xlsx")) fname += ".xlsx";
-      XLSX.writeFile(wb, fname);
-    });
-
-    resetBtn.addEventListener("click", () => {
-      masterFile = null; deltaFiles = []; rawData = []; currentData = []; cellEdits = {}; historyStack = [];
-      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
-      report.innerHTML = ""; totalOrders.textContent = "Total Orders: 0";
-      ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"].forEach(id => el(id).disabled = true);
-      updateFilterTags();
-    });
-  </script>
+  resetBtn.addEventListener("click", () => {
+    masterFile = null;
+    deltaFiles = [];
+    rawData = [];
+    currentData = [];
+    cellEdits = {};
+    historyStack = [];
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    report.innerHTML = "";
+    totalOrders.textContent = "Total Orders: 0";
+    ["showSoNumber","showDocNumber","resetBtn","filenameInput","downloadBtn"]
+      .forEach(id => el(id).disabled = true);
+    updateFilterTags();
+  });
+</script>
 </body>
 </html>
