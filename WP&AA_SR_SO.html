@@ -699,8 +699,23 @@ if (!hasJWL) {
     return String(v).trim() === '';
   }
 
-  function hasSkuPLXorPAIR(s){ s = String(s||'').toUpperCase(); return /\bPLX\b/.test(s) || /\bPAIR\b/.test(s); }
-  function hasSkuFBA(s){s = String(s||'').toUpperCase();return /(^|[^A-Z0-9])FBA([^A-Z0-9]|$)/.test(s);}
+  function hasSkuPLXorPAIR(s){
+    s = String(s||'').toUpperCase();
+    return /\bPLX\b/.test(s) || /\bPAIR\b/.test(s);
+  }
+
+  function hasSkuFBA(s){
+    s = String(s||'').toUpperCase();
+    return /(^|[^A-Z0-9])FBA([^A-Z0-9]|$)/.test(s);
+  }
+
+  // Ship From helpers (used for CF2 & Rate rules)
+  function isFBAShipFrom(s){
+    return String(s||'').toUpperCase().includes('FBA');
+  }
+  function isDropshipShipFrom(s){
+    return String(s||'').toUpperCase().includes('DROPSHIP');
+  }
 
   function buildHeaderMap(table){
     const map = {};
@@ -722,51 +737,100 @@ if (!hasJWL) {
 
     const H = buildHeaderMap(table);
     const idx = {
-      SHIP_FROM: H[norm('Ship From')],
-      ITEM_SKU: H[norm('Item SKU')],
-      CF1: H[norm('Custom Field 1')],
-      CF2: H[norm('Custom Field 2')],
-      SERVICE: H[norm('Service')] ?? H[norm('Carrier')],
-      CARRIER_FEE: H[norm('Rate')] ?? H[norm('Carrier Fee')],
-      TRACKING: H[norm('Tracking Number')],
-      PO_NUM: H[norm('PO Number')] ?? H[norm('PO Reference Number')]
+      SHIP_FROM:   H[norm('Ship From')],
+      ITEM_SKU:    H[norm('Item SKU')],
+      CF1:         H[norm('Custom Field 1')],
+      CF2:         H[norm('Custom Field 2')],
+      SERVICE:     H[norm('Service')] ?? H[norm('Carrier')],
+      CARRIER_FEE: H[norm('Rate')]   ?? H[norm('Carrier Fee')],
+      TRACKING:    H[norm('Tracking Number')],
+      PO_NUM:      H[norm('PO Number')] ?? H[norm('PO Reference Number')]
     };
+
+    const looksLikeSalesOrder =
+      (H[norm('PO REFERENCE NUMBER')] != null) ||
+      (table.getAttribute('data-view') === 'order');
 
     for (const tbody of table.tBodies){
       for (const tr of tbody.rows){
-        tr.querySelectorAll('td.kp-hl-red,td.kp-hl-yellow').forEach(td => { td.classList.remove('kp-hl-red','kp-hl-yellow'); });
+        // clear old cell highlights; row-level kp-row-warn is handled by other scripts
+        tr.querySelectorAll('td.kp-hl-red,td.kp-hl-yellow')
+          .forEach(td => td.classList.remove('kp-hl-red','kp-hl-yellow'));
 
         const val = {
           shipFrom: cellVal(getCell(tr, idx.SHIP_FROM)),
-          itemSku: cellVal(getCell(tr, idx.ITEM_SKU)),
-          cf1: cellVal(getCell(tr, idx.CF1)),
-          cf2: cellVal(getCell(tr, idx.CF2)),
-          service: cellVal(getCell(tr, idx.SERVICE)),
-          fee: cellVal(getCell(tr, idx.CARRIER_FEE)),
+          itemSku:  cellVal(getCell(tr, idx.ITEM_SKU)),
+          cf1:      cellVal(getCell(tr, idx.CF1)),
+          cf2:      cellVal(getCell(tr, idx.CF2)),
+          service:  cellVal(getCell(tr, idx.SERVICE)),
+          fee:      cellVal(getCell(tr, idx.CARRIER_FEE)),
           tracking: cellVal(getCell(tr, idx.TRACKING)),
-          po: cellVal(getCell(tr, idx.PO_NUM)),
+          po:       cellVal(getCell(tr, idx.PO_NUM)),
         };
 
-        if (idx.SHIP_FROM != null && isEmpty(val.shipFrom)) getCell(tr, idx.SHIP_FROM)?.classList.add('kp-hl-red');
-        if (idx.CF1 != null && isEmpty(val.cf1)) getCell(tr, idx.CF1)?.classList.add('kp-hl-red');
-        if (idx.ITEM_SKU != null && idx.CF2 != null && hasSkuPLXorPAIR(val.itemSku) && isEmpty(val.cf2)) getCell(tr, idx.CF2)?.classList.add('kp-hl-red');
-        const isVendorPO = /\bUSAUTO\b|\bUS AUTO\b|\bMEYER\b|\bTONSA\b/i.test(val.shipFrom || '');
-        const isFBAOrder = hasSkuFBA(val.itemSku);
-        if (idx.PO_NUM != null && !isVendorPO && !isFBAOrder && isEmpty(val.po)) {getCell(tr, idx.PO_NUM)?.classList.add('kp-hl-red');}
+        const isVendorPO =
+          /\bUSAUTO\b|\bUS AUTO\b|\bMEYER\b|\bTONSA\b/i.test(val.shipFrom || '');
+        const isFBAOrderSku   = hasSkuFBA(val.itemSku);
+        const isFbaShipFrom   = isFBAShipFrom(val.shipFrom);
+        const isDropshipShip  = isDropshipShipFrom(val.shipFrom);
 
+        // ---------- RED rules ----------
 
+        // Ship From required
+        if (idx.SHIP_FROM != null && isEmpty(val.shipFrom)){
+          getCell(tr, idx.SHIP_FROM)?.classList.add('kp-hl-red');
+        }
+
+        // CF1 required
+        if (idx.CF1 != null && isEmpty(val.cf1)){
+          getCell(tr, idx.CF1)?.classList.add('kp-hl-red');
+        }
+
+        // CF2 rule (Sales Report ONLY):
+        //  - Required for PLX/PAIR SKUs if empty
+        //  - BUT skip if Ship From is FBA
+        //  - Dropship still highlights as normal
+        if (!looksLikeSalesOrder && idx.ITEM_SKU != null && idx.CF2 != null){
+          if (hasSkuPLXorPAIR(val.itemSku) && isEmpty(val.cf2) && !isFbaShipFrom){
+            getCell(tr, idx.CF2)?.classList.add('kp-hl-red');
+          }
+        }
+        // (On Sales Order, we never add a CF2 highlight here.)
+
+        // PO required unless vendor PO or FBA SKU
+        if (idx.PO_NUM != null && !isVendorPO && !isFBAOrderSku && isEmpty(val.po)){
+          getCell(tr, idx.PO_NUM)?.classList.add('kp-hl-red');
+        }
+
+        // ---------- YELLOW rules ----------
         let allowYellow = true;
         const cf1Upper = norm(val.cf1);
-        const looksLikeSalesOrder = (H[norm('PO Reference Number')] != null) || (table.getAttribute('data-view') === 'order');
+
+        // Sales Order: only SHIPPING (WD) should get yellow
         if (looksLikeSalesOrder){
           allowYellow = (cf1Upper === 'SHIPPING (WD)');
         }
 
         if (allowYellow){
-          if (idx.SERVICE != null && isEmpty(val.service)) getCell(tr, idx.SERVICE)?.classList.add('kp-hl-yellow');
-          if (idx.CARRIER_FEE != null && isEmpty(val.fee)) getCell(tr, idx.CARRIER_FEE)?.classList.add('kp-hl-yellow');
-          if (idx.TRACKING != null && isEmpty(val.tracking)) getCell(tr, idx.TRACKING)?.classList.add('kp-hl-yellow');
+          // Service warning
+          if (idx.SERVICE != null && isEmpty(val.service)){
+            getCell(tr, idx.SERVICE)?.classList.add('kp-hl-yellow');
+          }
+
+          // Carrier Fee warning:
+          //   do NOT yellow-highlight when Ship From is FBA or any Dropship
+          if (!isFbaShipFrom && !isDropshipShip && idx.CARRIER_FEE != null && isEmpty(val.fee)){
+            getCell(tr, idx.CARRIER_FEE)?.classList.add('kp-hl-yellow');
+          }
+
+          // Tracking warning
+          if (idx.TRACKING != null && isEmpty(val.tracking)){
+            getCell(tr, idx.TRACKING)?.classList.add('kp-hl-yellow');
+          }
         }
+
+        // Note: full-row kp-row-warn is handled by kp360-row-warning-* scripts
+        // and still applies to Dropship + Carrier Fee as before.
       }
     }
   }
@@ -777,7 +841,10 @@ if (!hasJWL) {
   }
 
   let t = null;
-  function schedule(){ if (t) cancelAnimationFrame(t); t = requestAnimationFrame(highlightAll); }
+  function schedule(){
+    if (t) cancelAnimationFrame(t);
+    t = requestAnimationFrame(highlightAll);
+  }
 
   document.addEventListener('DOMContentLoaded', schedule);
   window.addEventListener('load', schedule);
