@@ -123,6 +123,31 @@
       return `${dt.getMonth()+1}/${dt.getDate()}/${dt.getFullYear()}`;
     }
 
+    // === NEW: prevent scientific notation for long IDs in CSV ===
+    function toPlainString(v){
+      if (v === null || v === undefined) return '';
+      if (typeof v === 'string') return v.trim();
+      if (typeof v === 'number') {
+        if (!isFinite(v)) return '';
+        return v.toLocaleString('fullwide', { useGrouping: false, maximumSignificantDigits: 21 });
+      }
+      return String(v).trim();
+    }
+    function normalizeRowIds(row){
+      const idKeys = [
+        "Order Number",
+        "Site Order ID",
+        "Invoice Number",
+        "Order #",
+        "Tracking Number",
+        "PO Number"
+      ];
+      idKeys.forEach(k => {
+        if (row[k] !== undefined) row[k] = toPlainString(row[k]);
+      });
+      return row;
+    }
+
     // File load
     function handleFiles(event) {
       const files = Array.from(event.target.files);
@@ -130,12 +155,16 @@
         const reader = new FileReader();
         reader.onload = function(e) {
           let json = [];
-          if (file.name.endsWith('.csv')) { const wb = XLSX.read(e.target.result, {type:'string'}); json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); }
+          if (file.name.endsWith('.csv')) { const wb = XLSX.read(e.target.result, {type:'string', raw:true}); json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {raw:true}); }
           else { const wb = XLSX.read(e.target.result, {type:'binary'}); json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); }
+
+          // NEW: normalize IDs so long numbers don't become scientific notation
+          json = json.map(normalizeRowIds);
+
           if (isFirstFile) {
             masterDataRows = []; masterOrderNumbers.clear();
             json.forEach(row => {
-              const ord = row["Order Number"]||row["Site Order ID"]||row["Order #"]; if (!ord) return;
+              const ord = row["Order Number"]||row["Site Order ID"]||row["Order #"]||row["Invoice Number"]; if (!ord) return;
               const rec = (row["Recipient"]||`${row["Shipping First Name"]||''} ${row["Shipping Last Name"]||''}`).trim();
               const itemSku = row["Item SKU"]||row["SKU"]||'';
               const computedShipFrom = computeShipFrom(row);
@@ -162,7 +191,7 @@
           } else {
             const updates = new Map();
             json.forEach(r => {
-              const ord = r["Order Number"]||r["Site Order ID"]||r["Order #"];
+              const ord = r["Order Number"]||r["Site Order ID"]||r["Order #"]||r["Invoice Number"];
               if (!ord || !masterOrderNumbers.has(ord)) return;
               if (!updates.has(ord)) updates.set(ord, []);
               updates.get(ord).push(r);
@@ -1105,7 +1134,7 @@ if (!hasJWL) {
   function norm(s){ return String(s||'').trim().replace(/\s+/g,' ').toUpperCase(); }
   function headerIndex(table, name){
     if (!table || !table.tHead) return -1;
-    var ths = table.querySelectorAll('th');
+    var ths = table.tHead.querySelectorAll('th');
     var key = norm(name);
     for (var i=0;i<ths.length;i++){ if (norm(ths[i].textContent) === key) return i; }
     return -1;
