@@ -2,15 +2,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>:root{--bg:#f6f8fb;--panel:#fff;--panel-2:#fcfdff;--text:#0f172a;--muted:#445268;--brand:#2563eb;--brand-2:#06b6d4;--border:#dbe2ea;--ring:rgba(37,99,235,.25);--chip-bg:#f8fafc;--chip-border:#e2e8f0;--input-bg:#fff;--input-border:#cbd5e1;--input-text:#0f172a;--table-alt:#f1f5f9;--table-hover:#eef6ff;--button-text:#fff}:root[data-theme="dark"]{--bg:#0b1220;--panel:#0f172a;--panel-2:#0b1224;--text:#e6edf3;--muted:#9fb1c7;--brand:#60a5fa;--brand-2:#22d3ee;--border:#1f2a3a;--ring:rgba(110,231,255,.35);--chip-bg:#0f172a;--chip-border:#1f2a3a;--input-bg:#0b1220;--input-border:#233048;--input-text:#e6edf3;--table-alt:rgba(255,255,255,.02);--table-hover:rgba(96,165,250,.07);--button-text:#0b1220}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui;padding:14px}.shell{width:100%}.header,.controls{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}.controls{position:sticky;top:8px;z-index:10}h1{margin:0;font-size:20px}.left-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.right-tools{display:flex;gap:8px;align-items:center;justify-content:flex-end}input[type="file"],.top-input{padding:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--input-text);border-radius:10px;min-width:240px}button{padding:9px 12px;border:0;border-radius:10px;background:linear-gradient(180deg,var(--brand),var(--brand-2));color:var(--button-text);font-weight:600;cursor:pointer}button[disabled]{opacity:.55;cursor:not-allowed}.pill{padding:6px 10px;border:1px solid var(--input-border);border-radius:999px;background:var(--input-bg);color:#445268;font-size:12px;cursor:pointer}.pill.active{outline:3px solid var(--ring)}#meta{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}.chip{font-size:12px;border:1px solid var(--chip-border);background:var(--chip-bg);border-radius:999px;padding:6px 10px;color:#475569}.chip.ok{border-color:#16a34a;color:#166534;background:#ecfdf5}.chip.warn{border-color:#f59e0b;color:#92400e;background:#fffbeb}.chip.err{border-color:#ef4444;color:#991b1b;background:#fef2f2}.table-wrap{width:100%;height:auto;overflow:auto;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 6px 18px rgba(0,0,0,.12)}table{width:100%;border-collapse:separate;border-spacing:0}thead th{position:sticky;top:0;z-index:5;background:var(--panel);color:var(--text);text-align:left;padding:10px 12px;font-weight:600;font-size:12px;letter-spacing:.2px;border-bottom:1px solid var(--border);white-space:nowrap}tbody td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)}tbody tr:nth-child(odd) td{background:var(--table-alt)}tbody tr:hover td{background:var(--table-hover)}.po-edit,.cf-edit{width:var(--cell-input-width) !important;max-width:var(--cell-input-width) !important;padding:5px 6px;border:1px solid var(--input-border);border-radius:8px;background:var(--input-bg);color:var(--input-text);font-size:12px}.hidden{display:none}.author{margin:4px 0 0 0;font-size:13px;color:var(--muted);font-style:italic}.th-plus{margin-left:6px;padding:0 6px;line-height:18px;height:20px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);border-radius:6px;font-weight:700;cursor:pointer}</style>
-
 <style id="kp360-empty-highlights">td.kp-hl-red{background:#fde2e1 !important}td.kp-hl-yellow{background:#fef3c7 !important}td.kp-hl-red input,td.kp-hl-yellow input{background-color:inherit !important}</style>
-
 <style id="kp360-service-col-style">th.kp-service-col,td.kp-service-col{min-width:120px !important;width:120px !important;white-space:normal;word-break:break-word}</style>
-
 <style id="kp360-row-warning-style">tr.kp-row-warn>td{background:#fde2e1 !important}</style>
-
 <style id="kp360-tip-bubble-style">.kp-tip{position:fixed;z-index:999999;max-width:320px;padding:8px 10px;border-radius:6px;background:#111;color:#fff;font-size:12px;line-height:1.35;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none;opacity:0;transform:translateY(-4px);transition:opacity .12s ease,transform .12s ease;white-space:normal;word-break:break-word}.kp-tip.show{opacity:0.96;transform:translateY(0)}.kp-tip strong{font-weight:600}.kp-tip .kp-tip-head{display:block;margin-bottom:4px;font-weight:600;color:#fef3c7}.kp-tip .kp-tip-rule{color:#cbd5e1}td.kp-hl-red,td.kp-hl-yellow,tr.kp-row-warn>td{position:relative}</style>
-
 <style id="kp360-verify-modal-style">.kp-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);display:none;z-index:99998}.kp-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}.kp-modal.show,.kp-modal-backdrop.show{display:flex}.kp-modal-card{width:min(720px,92vw);max-height:82vh;overflow:hidden;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 60px rgba(0,0,0,.35)}.kp-modal-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)}.kp-modal-title{font-weight:700}.kp-modal-body{padding:12px 14px}.kp-issues-wrap{border:1px solid var(--border);border-radius:10px;background:var(--chip-bg);padding:10px;max-height:48vh;overflow:auto}.kp-issues-wrap ul{margin:0;padding-left:18px}.kp-modal-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 14px;border-top:1px solid var(--border)}.kp-btn-ghost{background:transparent;border:1px solid var(--input-border);color:var(--text)}.kp-badge-err{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px}</style>
 </head><body><div class="shell"><div class="header" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div><h1>WooParts &amp; AutoApex — Sales Report/Order Generator</h1><p class="author">by Christine Anastacio</p></div><div class="right-tools"><button id="themeToggle">🌗</button></div></div><div class="controls" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div class="left-controls"><input type="file" id="fileInput" multiple accept=".xlsx, .xls, .csv" /><button class="secondary" onclick="resetAll()">Reset</button><div class="view-toggle" style="display:flex;gap:6px"><span id="pillReport" class="pill active" onclick="switchView('report')">Sales Report</span><span id="pillOrder" class="pill" onclick="switchView('order')">Sales Order</span></div></div><div class="right-tools" style="display:flex;gap:8px;align-items:center"><label for="exportFilename">Export as</label><input type="text" id="exportFilename" class="top-input" placeholder="File name" value="Sales_Report" /><button id="copyDropshipBtn" class="secondary" title="Copy all lines with Dropship ship-from">Copy Dropship</button><button id="copyJwlBtn" class="secondary" title="Copy Sales Report rows with JWL">Copy JWL</button><button id="verifyBtn" class="secondary hidden" title="Verify Sales Order table before export">Verify table</button><button id="exportBtn" onclick="exportCurrent()" disabled>Export Current View</button></div></div><div id="meta"><div id="totalOrders" class="chip">Total Orders: 0</div><div id="ordersByDate" class="chip">Orders by Date:</div><div id="verifyStatus" class="chip hidden"></div></div><div class="table-wrap" id="reportWrap"><table id="reportTable"><thead><tr><th>Order Date</th><th>Ship From</th><th>Order Number</th><th>Item SKU</th><th>Quantity</th><th>Custom Field 1</th><th>Custom Field 2</th><th>Custom Field 3</th><th>Order Total</th><th>Recipient</th><th>Rate</th><th>Service</th><th>Tracking Number</th><th>PO Number</th></tr></thead><tbody></tbody></table></div><div style="height:10px"></div><div class="table-wrap hidden" id="orderWrap"><table id="orderTable" data-view="order"><thead><tr><th>Order Date</th><th>Ship From</th><th>Order Number</th><th>Item SKU</th><th>Quantity</th><th>Custom Field 1</th><th>Custom Field 2</th><th>Custom Field 3</th><th>Order Total</th><th>Recipient</th><th>Carrier Fee</th><th>Service</th><th>Tracking Number</th><th>PO Reference Number</th><th>Memo <button type="button" class="th-plus" title="Add 'AutoApex' to all Memo cells" onclick="addAutoApexMemo()">+</button></th></tr></thead><tbody></tbody></table></div></div>
 
@@ -113,6 +108,23 @@
       if (sku.includes('OLX')) return 'Tonsa Dropship';
       return '';
     }
+    
+    function computeService(srcRow){
+      // Service = Shipping Carrier Code + Shipping Class Code
+      const carrier = (srcRow["Shipping Carrier Code"] ?? srcRow["Shipping Carrier"] ?? srcRow["Carrier Code"] ?? srcRow["Carrier"] ?? '').toString().trim();
+      const cls = (srcRow["Shipping Class Code"] ?? srcRow["Shipping Class"] ?? srcRow["Class Code"] ?? srcRow["Class"] ?? '').toString().trim();
+
+      let combined = `${carrier} ${cls}`.trim().replace(/\s+/g,' ');
+      if (!combined) {
+        combined = (srcRow["Service"] ?? '').toString().trim();
+      }
+
+      // If Service is eBay Standard, ignore it (blank)
+      if (combined.toUpperCase() === 'EBAY STANDARD') return '';
+      return combined.replace(/®/g,'');
+    }
+
+
     function shipFromIsVendor(s){s=(s||'').toUpperCase();return /\bUSAUTO\b|\bUS AUTO\b|\bMEYER\b|\bTONSA\b|\bFBA WAREHOUSE\b/.test(s);}
     function formatDate(dateValue) {
       if (typeof dateValue === 'number') {
@@ -181,7 +193,7 @@
                 "Order Total": row["Order Total"]||'',
                 "Recipient": rec,
                 "Rate": row["Rate"]||'',
-                "Service": (row["Service"]||'').replace(/®/g,''),
+                "Service": computeService(row),
                 "Tracking Number": row["Tracking Number"]||'',
                 "PO Number": row["PO Number"]||''
               });
@@ -212,7 +224,8 @@
             masterDataRows = masterDataRows.map(r => {
               const updated = { ...r };
               updated["Ship From"] = computeShipFrom(updated);
-              if (skuHasFBA(r["Item SKU"])) updated["Custom Field 1"] = r["Item SKU"];
+                            updated["Service"] = computeService(updated);
+if (skuHasFBA(r["Item SKU"])) updated["Custom Field 1"] = r["Item SKU"];
               return updated;
             });
             updateFilesCount++;
@@ -268,7 +281,9 @@
           input.value = (key === "Service" ? (row[key] || '').toString().replace(/®/g,'') : (row[key] || ''));
           input.placeholder = key;
           input.addEventListener('change', (e) => {
-            const val = key === "Service" ? e.target.value.replace(/®/g,'') : e.target.value;
+            let val = key === "Service" ? e.target.value.replace(/®/g,'') : e.target.value;
+            if (key === "Service" && String(val||'').trim().toUpperCase() === 'EBAY STANDARD') val = '';
+
             masterDataRows[idx][key] = val || '';
             // If Item SKU has FBA, keep CF1 synced to SKU as per rule
             if (key === "Custom Field 1" && skuHasFBA(masterDataRows[idx]["Item SKU"])) {
