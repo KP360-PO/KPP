@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AAG NS File Generator</title>
+  <title>AAG NS File Generator (Remapped)</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     body {
@@ -17,327 +17,590 @@
       background-position: center;
       backdrop-filter: blur(5px);
     }
-    h1 {
-      text-align: center;
-      font-size: 2rem;
-      margin: 30px 0;
-      color: #ffffffcc;
-      text-shadow: 0 0 6px #000;
-    }
-    .container {
-      width: 100%;
-      padding: 30px 50px;
-      background: rgba(0, 0, 0, 0.7);
-      box-sizing: border-box;
-    }
+    h1 { text-align: center; font-size: 2rem; margin: 30px 0; color: #ffffffcc; text-shadow: 0 0 6px #000; }
+    .container { width: 100%; padding: 30px 50px; background: rgba(0, 0, 0, 0.7); box-sizing: border-box; }
+
     .drop-zone {
-      border: 2px dashed #888;
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      cursor: pointer;
-      margin-bottom: 20px;
-      background-color: rgba(255, 255, 255, 0.05);
-      transition: background-color 0.3s ease, border-color 0.3s;
+      border: 2px dashed #888; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; margin-bottom: 12px;
+      background-color: rgba(255, 255, 255, 0.05); transition: background-color 0.3s ease, border-color 0.3s;
+      user-select: none;
     }
-    .drop-zone:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-    .drop-zone.dragover {
-      background-color: rgba(30, 144, 255, 0.3);
-      border-color: #1f6feb;
-    }
-    .drop-zone-text {
-      font-size: 0.9rem;
-      color: #ccc;
-    }
-    .button-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
+    .drop-zone:hover { background-color: rgba(255, 255, 255, 0.1); }
+    .drop-zone.dragover { background-color: rgba(30, 144, 255, 0.3); border-color: #1f6feb; }
+    .drop-zone-text { font-size: 0.9rem; color: #ccc; margin: 6px 0 0; }
+
+    .button-group { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
     .button-group button {
-      border: none;
-      border-radius: 50px;
-      padding: 12px 24px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      text-shadow: 0 1px 2px #000;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      border: none; border-radius: 50px; padding: 12px 24px; font-size: 0.95rem; font-weight: 600; text-shadow: 0 1px 2px #000;
+      cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: transform 0.2s ease;
     }
-    .button-group button:hover {
-      transform: scale(1.05);
-    }
+    .button-group button:hover { transform: scale(1.05); }
     .green-btn { background-color: #2ecc71; color: #fff; }
-    .amber-btn { background-color: #f1c40f; color: #000; }
     .blue-btn { background-color: #3498db; color: #fff; }
     .red-btn { background-color: #e74c3c; color: #fff; }
-    #tableContainer {
-      overflow-x: auto;
+
+    #statusBar {
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      color: #d7f7ff;
+      font-size: 0.9rem;
+      line-height: 1.35;
+      white-space: pre-line;
     }
+
+    #tableContainer { overflow-x: auto; margin-top: 12px; }
     table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
+      width: 100%; border-collapse: collapse; margin-top: 14px;
       background-color: rgba(255, 255, 255, 0.1);
-      color: #fff;
-      font-size: 0.85rem;
-      border-radius: 8px;
+      color: #fff; font-size: 0.85rem; border-radius: 8px;
     }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #666;
-      text-align: left;
-      word-break: break-word;
-    }
-    th {
-      background-color: rgba(255, 255, 255, 0.15);
-      position: sticky;
-      top: 0;
-      z-index: 2;
-    }
-    td[contenteditable] {
-      background-color: rgba(255, 255, 255, 0.05);
-    }
-    td[contenteditable]:focus {
-      background-color: #ffffcc;
-      color: #000;
-      outline: 2px solid #3498db;
-    }
+    th, td { padding: 10px; border-bottom: 1px solid #666; text-align: left; word-break: break-word; }
+    th { background-color: rgba(255, 255, 255, 0.15); position: sticky; top: 0; z-index: 2; }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>AAG NS File Generator</h1>
 
     <div class="drop-zone" id="poDropZone">
-      <label for="fileInput">PO File (drag or click)</label>
-      <input type="file" id="fileInput" accept=".xlsx, .xls" hidden />
+      <label>PO File (drag or click)</label>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" hidden />
       <p class="drop-zone-text">Drop PO Excel file here or click to upload</p>
     </div>
 
     <div class="drop-zone" id="trackingDropZone">
-      <label for="matchFileInput">Tracking Details File (drag or click)</label>
-      <input type="file" id="matchFileInput" accept=".xlsx, .xls" hidden />
+      <label>Tracking Details File (drag or click)</label>
+      <input type="file" id="matchFileInput" accept=".xlsx,.xls" hidden />
       <p class="drop-zone-text">Drop Tracking Excel file here or click to upload</p>
     </div>
 
     <div class="button-group">
-      <button class="green-btn" onclick="generateMappedData()">Generate File</button>
-      <button class="amber-btn" onclick="mergeCarrierTracking()">Merge Carrier & Tracking Info</button>
-      <button class="blue-btn" onclick="downloadExcel()">Download File</button>
-      <button class="red-btn" onclick="clearData()">Clear</button>
+      <button class="green-btn" onclick="processAndDownload()">Process & Download</button>
+      <button class="blue-btn" onclick="previewOutput()">Preview Output</button>
+      <button class="red-btn" onclick="clearAll()">Clear</button>
     </div>
 
+    <div id="statusBar">Status: waiting for files…</div>
     <div id="tableContainer"></div>
   </div>
 
-  <script>
-    let mappedData = [];
+<script>
+  // =========================
+  // State
+  // =========================
+  let poRows = [];
+  let trackingByOrder = {};
+  let lastOutput = [];
 
-    function setupDropZone(dropZoneId, inputId) {
-      const dropZone = document.getElementById(dropZoneId);
-      const input = document.getElementById(inputId);
+  const statusBar = document.getElementById("statusBar");
+  function setStatus(msg) { statusBar.textContent = msg; }
+  const norm = (s) => (s ?? "").toString().trim().toLowerCase();
 
-      dropZone.addEventListener('click', () => input.click());
-      dropZone.addEventListener('dragover', e => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-      });
-      dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('dragover');
-      });
-      dropZone.addEventListener('drop', e => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length) {
-          input.files = files;
-          if (inputId === 'fileInput') generateMappedData();
-          else if (inputId === 'matchFileInput') mergeCarrierTracking();
-        }
-      });
+  // =========================
+  // Helpers
+  // =========================
+  function dateFromPO(poValue) {
+    const s = (poValue ?? "").toString().trim();
+    const m = s.match(/(\d{6})/); // grab MMDDYY anywhere
+    if (!m) return "";
+    const six = m[1];
+    const mm = six.slice(0, 2), dd = six.slice(2, 4), yy = six.slice(4, 6);
+    return `${mm}/${dd}/20${yy}`;
+  }
+
+  function locationFromPO(poValue) {
+    const s = (poValue ?? "").toString().trim().toUpperCase();
+    if (s.endsWith("-NJ")) return "New Jersey Distribution Warehouse";
+    if (s.endsWith("-CA")) return "California Distribution Warehouse";
+    if (s.endsWith("-GA")) return "Georgia Distribution Warehouse";
+    if (s.endsWith("-IL")) return "Chicago Distribution Warehouse";
+    return "";
+  }
+
+  // Convert scientific notation string like 9.36129E+21 to full digits (best effort)
+  function expandScientific(value) {
+    let s = (value ?? "").toString().trim();
+    if (!s) return "";
+    if (!/[eE]/.test(s)) return s;
+
+    const m = s.match(/^([+-]?)(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$/);
+    if (!m) return s;
+
+    const sign = m[1] === "-" ? "-" : "";
+    const intPart = m[2] || "0";
+    const fracPart = m[3] || "";
+    const exp = parseInt(m[4], 10);
+
+    const digits = (intPart + fracPart).replace(/^0+(?=\d)/, "") || "0";
+    const decPlaces = fracPart.length;
+    const shift = exp - decPlaces;
+
+    if (shift >= 0) return sign + digits + "0".repeat(shift);
+
+    const cutLen = digits.length + shift;
+    const cut = digits.slice(0, Math.max(1, cutLen));
+    return sign + cut;
+  }
+
+  function normalizeOrderKey(v) {
+    let s = (v ?? "").toString().trim();
+    if (/^\d+\.0$/.test(s)) s = s.replace(/\.0$/, "");
+    s = s.replace(/\s+/g, ""); // remove all spaces
+    return s;
+  }
+
+  function findColumn(headers, rules) {
+    const normalized = headers.map(h => ({ raw: h, n: norm(h) }));
+
+    if (rules.exact?.length) {
+      for (const want of rules.exact) {
+        const m = normalized.find(x => x.n === norm(want));
+        if (m) return m.raw;
+      }
     }
+    if (rules.includes?.length) {
+      for (const key of rules.includes) {
+        const k = norm(key);
+        const m = normalized.find(x => x.n.includes(k));
+        if (m) return m.raw;
+      }
+    }
+    if (rules.includesAll?.length) {
+      const needles = rules.includesAll.map(x => norm(x));
+      const m = normalized.find(x => needles.every(n => x.n.includes(n)));
+      if (m) return m.raw;
+    }
+    return null;
+  }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      setupDropZone("poDropZone", "fileInput");
-      setupDropZone("trackingDropZone", "matchFileInput");
+  // filename: keep prefix+MMDDYY then " ALL PO - NS"
+  function filenameFromPO(poValue) {
+    const s = (poValue ?? "").toString().trim();
+    const m = s.match(/^([A-Za-z]+)(\d{6})/);
+    if (m) return `${m[1].toUpperCase()}${m[2]} ALL PO - NS.xlsx`;
+
+    const d = s.match(/(\d{6})/);
+    if (d) return `AAG${d[1]} ALL PO - NS.xlsx`;
+    return `AAG ALL PO - NS.xlsx`;
+  }
+
+  // Shipping row detector (robust)
+  function isShippingWD(val) {
+    const s = (val ?? "").toString().trim().toLowerCase();
+    const cleaned = s.replace(/[^a-z0-9]/g, ""); // remove spaces/punct
+    return cleaned === "shippingwd" || (cleaned.includes("shipping") && cleaned.includes("wd"));
+  }
+
+  // =========================
+  // Drop zones
+  // =========================
+  function setupDropZone(dropZoneId, inputId, onFile) {
+    const dropZone = document.getElementById(dropZoneId);
+    const input = document.getElementById(inputId);
+
+    dropZone.addEventListener('click', () => input.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const file = e.dataTransfer?.files?.[0];
+      if (file) onFile(file);
     });
 
-    function getValueBelow(sheet, coord, offset) {
-      if (!coord) return "";
-      const addr = XLSX.utils.encode_cell({ r: coord.r + 1 + offset, c: coord.c });
-      const cell = sheet[addr];
-      return cell?.v || "";
-    }
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (file) onFile(file);
+    });
+  }
 
-    function formatExcelDate(raw) {
-      if (typeof raw === "number") {
-        const date = XLSX.SSF.parse_date_code(raw);
-        return `${String(date.m).padStart(2, '0')}/${String(date.d).padStart(2, '0')}/${date.y}`;
-      } else if (typeof raw === "string") {
-        const parsed = new Date(raw);
-        return !isNaN(parsed) ? `${String(parsed.getMonth() + 1).padStart(2, '0')}/${String(parsed.getDate()).padStart(2, '0')}/${parsed.getFullYear()}` : "";
-      }
-      return "";
-    }
+  document.addEventListener("DOMContentLoaded", () => {
+    setupDropZone("poDropZone", "fileInput", loadPOFile);
+    setupDropZone("trackingDropZone", "matchFileInput", loadTrackingFile);
+  });
 
-    function generateMappedData() {
-      mappedData = [];
-      const file = document.getElementById("fileInput").files[0];
-      if (!file) return alert("Please select a PO file.");
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const workbook = XLSX.read(e.target.result, { type: "binary" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const range = XLSX.utils.decode_range(sheet['!ref']);
-        const headersMap = {};
+  // =========================
+  // Load PO file (fixed headers)
+  // =========================
+  function loadPOFile(file) {
+    setStatus(`PO selected: ${file.name}\nReading PO file…`);
+    const reader = new FileReader();
 
-        for (let R = range.s.r; R <= range.e.r; ++R) {
-          for (let C = range.s.c; C <= range.e.c; ++C) {
-            const cell = sheet[XLSX.utils.encode_cell({ r: R, c: C })];
-            if (!cell || !cell.v) continue;
-            const val = cell.v.toString().trim().toLowerCase();
-            if (["date submitted", "po number", "order #", "item #", "qty", "customer's name", "unit price", "amount"].includes(val)) {
-              headersMap[val] = { r: R, c: C };
-            }
-          }
-        }
+    reader.onload = function (e) {
+      try {
+        const wb = XLSX.read(e.target.result, { type: "binary" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        if (!sheet || !sheet["!ref"]) { setStatus("PO load failed: Empty sheet."); return; }
 
-        const clpoValue = getValueBelow(sheet, headersMap["po number"], 0);
-        const dateRaw = getValueBelow(sheet, headersMap["date submitted"], 0);
-        const formattedDate = formatExcelDate(dateRaw);
+        const json = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+        if (!json.length) { setStatus("PO load failed: No rows found."); return; }
 
-        const maxLength = Math.max(...["order #", "item #", "qty", "customer's name", "unit price", "amount"].map(key => {
-          const loc = headersMap[key]; if (!loc) return 0;
-          let len = 0;
-          while (sheet[XLSX.utils.encode_cell({ r: loc.r + 1 + len, c: loc.c })]?.v) len++;
-          return len;
-        }));
-
-        for (let i = 0; i < maxLength; i++) {
-          const itemValue = getValueBelow(sheet, headersMap["item #"], i).toString().trim();
-          if (itemValue.toLowerCase() === "total") continue;
-
-          mappedData.push({
-            "Date": formattedDate,
-            "Reference PO": "",
-            "CLPO #": clpoValue,
-            "Order #": getValueBelow(sheet, headersMap["order #"], i),
-            "ITEM #": itemValue.toUpperCase(),
-            "QTY": getValueBelow(sheet, headersMap["qty"], i),
-            "Customer's Name": getValueBelow(sheet, headersMap["customer's name"], i),
-            "Unit Price": parseFloat(getValueBelow(sheet, headersMap["unit price"], i) || 0).toFixed(2),
-            "Amount": parseFloat(getValueBelow(sheet, headersMap["amount"], i) || 0).toFixed(2),
-            "Carrier": "",
-            "Tracking Number": "",
-            "Location": "",
-            "SO NUMBER": ""
-          });
-        }
-
-        displayTable(mappedData);
-      };
-      reader.readAsBinaryString(file);
-    }
-
-    function displayTable(data) {
-      const container = document.getElementById("tableContainer");
-      if (!data.length) return container.innerHTML = "<p>No data to display.</p>";
-
-      let table = "<table><thead><tr>";
-      Object.keys(data[0]).forEach(key => table += `<th>${key}</th>`);
-      table += "</tr></thead><tbody>";
-
-      data.forEach((row, i) => {
-        table += "<tr>";
-        Object.keys(row).forEach(key => {
-          table += `<td contenteditable oninput="updateCell(${i}, '${key}', this.innerText)">${row[key]}</td>`;
-        });
-        table += "</tr>";
-      });
-
-      table += "</tbody></table>";
-      container.innerHTML = table;
-    }
-
-    function updateCell(i, key, val) {
-      if (key === "ITEM #") {
-        val = val.toUpperCase();
-      }
-      mappedData[i][key] = val.trim();
-    }
-
-    function mergeCarrierTracking() {
-      const file = document.getElementById("matchFileInput").files[0];
-      if (!file) return alert("Please upload a tracking file.");
-
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const workbook = XLSX.read(e.target.result, { type: "binary" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
-        const lookupMap = {};
-        json.forEach(row => {
-          const orderKey = (row["Order #"] || row["order #"] || "").toString().trim();
-          const carrier = row["Carrier"] || row["carrier"] || "";
-          const tracking = row["Tracking Number"] || row["tracking number"] || "";
-          if (orderKey && (carrier || tracking)) {
-            lookupMap[orderKey] = { Carrier: carrier, TrackingNumber: tracking };
-          }
-        });
-
-        mappedData.forEach(row => {
-          const key = (row["Order #"] || "").toString().trim();
-          if (lookupMap[key]) {
-            row["Carrier"] = lookupMap[key].Carrier;
-            row["Tracking Number"] = lookupMap[key].TrackingNumber;
-          }
-
-          const clpo = row["CLPO #"] || "";
-          if (clpo.endsWith("-NJ")) row["Location"] = "New Jersey Distribution Warehouse";
-          else if (clpo.endsWith("-CA")) row["Location"] = "California Distribution Warehouse";
-          else row["Location"] = "";
-        });
-
-        displayTable(mappedData);
-        alert("Carrier, Tracking Number, and Location updated.");
-      };
-
-      reader.readAsBinaryString(file);
-    }
-
-    function downloadExcel() {
-      if (!mappedData.length) return alert("No data to export.");
-
-      const adjusted = mappedData.map(row => {
-        const trackingFormatted = /^\d{10,}$/.test(row["Tracking Number"])
-          ? `="${row["Tracking Number"]}"`
-          : row["Tracking Number"];
-
-        return {
-          ...row,
-          "ITEM #": (row["ITEM #"] || "").toString().toUpperCase(),
-          "Tracking Number": trackingFormatted
+        const wanted = {
+          po: "PO #",
+          order: "Order - Number",
+          item: "Item - SKU",
+          qty: "Count - Number of Items",
+          cust: "Ship To - Name"
         };
+
+        const keys = Object.keys(json[0]);
+        const mapNormToRaw = {};
+        keys.forEach(k => mapNormToRaw[norm(k)] = k);
+        const resolve = (name) => mapNormToRaw[norm(name)] || null;
+
+        const colPO = resolve(wanted.po);
+        const colOrder = resolve(wanted.order);
+        const colItem = resolve(wanted.item);
+        const colQty = resolve(wanted.qty);
+        const colCust = resolve(wanted.cust);
+
+        if (!colPO || !colOrder || !colItem || !colQty || !colCust) {
+          setStatus(
+            "PO load failed: Missing required columns.\nRequired headers:\n" +
+            `- ${wanted.po}\n- ${wanted.order}\n- ${wanted.item}\n- ${wanted.qty}\n- ${wanted.cust}`
+          );
+          return;
+        }
+
+        poRows = json.map(r => ({
+          po: String(r[colPO] ?? "").trim(),
+          order: String(r[colOrder] ?? "").trim(),
+          item: String(r[colItem] ?? "").trim(),
+          qty: r[colQty],
+          cust: String(r[colCust] ?? "").trim()
+        })).filter(r => r.po || r.order || r.item);
+
+        if (!poRows.length) { setStatus("PO load failed: No usable rows detected."); return; }
+        setStatus(`PO loaded ✅ (${poRows.length} rows)\nNow upload Tracking file.`);
+      } catch (err) {
+        console.error(err);
+        setStatus("PO load failed: " + (err?.message || err));
+      }
+    };
+
+    reader.onerror = () => setStatus("PO load failed: Could not read file.");
+    reader.readAsBinaryString(file);
+  }
+
+  // =========================
+  // Load Tracking file (flex headers)
+  // =========================
+  function loadTrackingFile(file) {
+    setStatus(`Tracking selected: ${file.name}\nReading tracking file…`);
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      try {
+        const wb = XLSX.read(e.target.result, { type: "binary", cellText: true, cellNF: true });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        if (!sheet || !sheet["!ref"]) { setStatus("Tracking load failed: Empty sheet."); return; }
+
+        const json = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+        if (!json.length) { setStatus("Tracking load failed: No rows found."); return; }
+
+        const headers = Object.keys(json[0]);
+
+        const colOrder = findColumn(headers, {
+          exact: ["Order - Number", "Order #", "Order Number"],
+          includes: ["order", "sales order", "so number"]
+        });
+
+        const colFee = findColumn(headers, {
+          exact: ["Carrier Fee"],
+          includes: ["carrier fee", "shipping fee", "label amount", "label cost", "carrierfee", "shipping cost"],
+          includesAll: ["carrier", "fee"]
+        });
+
+        const colTrack = findColumn(headers, {
+          exact: ["Tracking #", "Tracking Number"],
+          includes: ["tracking", "tracking#", "tracking number", "tracking id"]
+        });
+
+        const colService = findColumn(headers, {
+          exact: ["Service", "Service Name"],
+          includes: ["service", "carrier service", "shipping service"]
+        });
+
+        if (!colOrder || !colFee || !colTrack || !colService) {
+          setStatus(
+            "Tracking load failed: Missing required columns.\nDetected headers:\n" +
+            headers.join(", ") +
+            "\n\nNeeded (flexible):\n- Order column\n- Carrier Fee column\n- Tracking # column\n- Service column"
+          );
+          return;
+        }
+
+        trackingByOrder = {};
+        json.forEach(r => {
+          const rawOrder = r[colOrder];
+          const orderKey = normalizeOrderKey(rawOrder);
+          if (!orderKey) return;
+
+          const fee = String(r[colFee] ?? "").trim();
+          const trackingRaw = String(r[colTrack] ?? "").trim();
+          const service = String(r[colService] ?? "").trim();
+
+          trackingByOrder[orderKey] = {
+            carrierFee: fee,
+            tracking: expandScientific(trackingRaw),
+            service: service
+          };
+        });
+
+        setStatus(
+          `Tracking loaded ✅ (${Object.keys(trackingByOrder).length} orders indexed)\n` +
+          `Matched columns:\n- Order: ${colOrder}\n- Fee: ${colFee}\n- Tracking: ${colTrack}\n- Service: ${colService}\n\n` +
+          `Click Process & Download.`
+        );
+      } catch (err) {
+        console.error(err);
+        setStatus("Tracking load failed: " + (err?.message || err));
+      }
+    };
+
+    reader.onerror = () => setStatus("Tracking load failed: Could not read file.");
+    reader.readAsBinaryString(file);
+  }
+
+  // =========================
+  // Output Headers (14 columns)
+  // =========================
+  const OUT_HEADERS = [
+    "Date",
+    "Reference PO",
+    "PO #",
+    "Order - Number",
+    "Item - SKU",
+    "Qty",
+    "Customer's Name",
+    "Unit Price",
+    "Amount",
+    "Carrier",
+    "Tracking Number",
+    "Location",
+    "SO Number",
+    "Shipping Cost"
+  ];
+
+  // =========================
+  // Build Output Rows
+  // Rules:
+  // - Item rows: Shipping Cost = fee, Amount blank, Tracking Number blank
+  // - Shipping row (Shipping (WD)): Amount = fee, Tracking Number = tracking, Shipping Cost blank
+  // =========================
+  function buildOutputRows() {
+    if (!poRows.length) throw new Error("Please upload the PO file first.");
+    if (!Object.keys(trackingByOrder).length) throw new Error("Please upload the tracking file (required).");
+
+    const itemsByOrder = {};
+    poRows.forEach(r => {
+      if (!r.order) return;
+      if (!itemsByOrder[r.order]) itemsByOrder[r.order] = [];
+      itemsByOrder[r.order].push(r);
+    });
+
+    const output = [];
+
+    Object.keys(itemsByOrder).forEach(order => {
+      const items = itemsByOrder[order];
+      const first = items[0];
+
+      const track = trackingByOrder[normalizeOrderKey(order)] || { carrierFee: "", tracking: "", service: "" };
+      const fee = track.carrierFee ?? "";
+      const trackingNum = expandScientific(track.tracking ?? "");
+      const carrier = track.service ?? "";
+      const poVal = first.po ?? "";
+      const date = dateFromPO(poVal);
+      const location = locationFromPO(poVal);
+
+      // Item rows (repeat Shipping Cost on every item row)
+      items.forEach(it => {
+        output.push({
+          "Date": date,
+          "Reference PO": "",
+          "PO #": it.po ?? "",
+          "Order - Number": it.order ?? "",
+          "Item - SKU": it.item ?? "",
+          "Qty": it.qty ?? "",
+          "Customer's Name": it.cust ?? "",
+          "Unit Price": "",
+          "Amount": "",               // blank on item rows
+          "Carrier": carrier,
+          "Tracking Number": "",      // ✅ blank on item rows
+          "Location": location,
+          "SO Number": "",
+          "Shipping Cost": fee
+        });
       });
 
-      const worksheet = XLSX.utils.json_to_sheet(adjusted);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Mapped Data");
-      XLSX.writeFile(workbook, "mapped_data.csv");
+      // Shipping row
+      output.push({
+        "Date": date,
+        "Reference PO": "",
+        "PO #": poVal,
+        "Order - Number": order,
+        "Item - SKU": "Shipping (WD)",
+        "Qty": 1,
+        "Customer's Name": first.cust ?? "",
+        "Unit Price": "",
+        "Amount": fee,              // only on shipping row
+        "Carrier": carrier,
+        "Tracking Number": trackingNum, // ✅ only on shipping row
+        "Location": location,
+        "SO Number": "",
+        "Shipping Cost": ""         // blank on shipping row
+      });
+    });
+
+    return output.map(r => {
+      const o = {};
+      OUT_HEADERS.forEach(h => o[h] = (r[h] ?? ""));
+      return o;
+    });
+  }
+
+  // =========================
+  // Export XLSX
+  // - Force Tracking Number to text format
+  // - Enforce Amount only on Shipping (WD) rows (delete Amount cell otherwise)
+  // - Enforce Tracking Number only on Shipping (WD) rows (delete cell otherwise)
+  // =========================
+  function exportAsXLSX(rows, filename) {
+    const prepped = rows.map(r => {
+      const out = { ...r };
+      out["Tracking Number"] = expandScientific(out["Tracking Number"] ?? "");
+      out["PO #"] = String(out["PO #"] ?? "");
+      out["Order - Number"] = String(out["Order - Number"] ?? "");
+      out["Item - SKU"] = String(out["Item - SKU"] ?? "");
+      return out;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(prepped, { raw: true });
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+
+    // find columns
+    let trackingCol = null, amountCol = null, itemCol = null;
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const headerAddr = XLSX.utils.encode_cell({ r: range.s.r, c });
+      const header = (ws[headerAddr]?.v ?? "").toString().trim().toLowerCase();
+      if (header === "tracking number") trackingCol = c;
+      if (header === "amount") amountCol = c;
+      if (header === "item - sku") itemCol = c;
     }
 
-    function clearData() {
-      mappedData = [];
-      document.getElementById("tableContainer").innerHTML = "";
-      document.getElementById("fileInput").value = "";
-      document.getElementById("matchFileInput").value = "";
+    // Enforce Amount and Tracking Number based on Shipping (WD) row
+    for (let i = 0; i < prepped.length; i++) {
+      const sheetRow = range.s.r + 1 + i;
+
+      const isShip = isShippingWD(prepped[i]["Item - SKU"]);
+
+      // Amount handling
+      if (amountCol !== null) {
+        const amountAddr = XLSX.utils.encode_cell({ r: sheetRow, c: amountCol });
+        if (!isShip) {
+          if (ws[amountAddr]) delete ws[amountAddr];
+        } else {
+          const rawAmt = (prepped[i]["Amount"] ?? "").toString().trim();
+          const num = parseFloat(rawAmt);
+          if (rawAmt !== "" && !Number.isNaN(num)) {
+            ws[amountAddr] = { v: num, t: "n", z: "0.00" };
+          } else {
+            ws[amountAddr] = { v: rawAmt, t: "s" };
+          }
+        }
+      }
+
+      // Tracking Number handling (text)
+      if (trackingCol !== null) {
+        const trackAddr = XLSX.utils.encode_cell({ r: sheetRow, c: trackingCol });
+        if (!isShip) {
+          if (ws[trackAddr]) delete ws[trackAddr]; // ✅ remove on item rows
+        } else {
+          // ✅ keep only on Shipping (WD) row
+          const v = expandScientific(prepped[i]["Tracking Number"] ?? "");
+          ws[trackAddr] = { v: String(v), t: "s", z: "@" };
+          if (ws[trackAddr].f) delete ws[trackAddr].f;
+        }
+      }
     }
-  </script>
+
+    // Also force ALL tracking column cells (that remain) to be text
+    if (trackingCol !== null) {
+      for (let r = range.s.r + 1; r <= range.e.r; r++) {
+        const addr = XLSX.utils.encode_cell({ r, c: trackingCol });
+        if (!ws[addr]) continue;
+        ws[addr].v = String(ws[addr].v ?? "");
+        ws[addr].t = "s";
+        ws[addr].z = "@";
+        if (ws[addr].f) delete ws[addr].f;
+      }
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+    XLSX.writeFile(wb, filename, { bookType: "xlsx", compression: true });
+  }
+
+  // =========================
+  // UI Actions
+  // =========================
+  function previewOutput() {
+    try {
+      lastOutput = buildOutputRows();
+      renderTable(lastOutput.slice(0, 200));
+      setStatus(`Preview ready ✅ (showing up to 200 rows)\nClick Process & Download for the full file.`);
+    } catch (err) {
+      alert(err.message || err);
+      setStatus("Preview failed: " + (err.message || err));
+    }
+  }
+
+  function processAndDownload() {
+    try {
+      lastOutput = buildOutputRows();
+      const firstPO = (poRows[0]?.po ?? "").toString().trim();
+      const fileName = filenameFromPO(firstPO);
+
+      exportAsXLSX(lastOutput, fileName);
+      renderTable(lastOutput.slice(0, 200));
+      setStatus(`Downloaded ✅ ${fileName}\nRows: ${lastOutput.length}\nAmount + Tracking ONLY on Shipping (WD) row (saved correctly).`);
+    } catch (err) {
+      alert(err.message || err);
+      setStatus("Process failed: " + (err.message || err));
+    }
+  }
+
+  function renderTable(rows) {
+    const container = document.getElementById("tableContainer");
+    if (!rows || !rows.length) { container.innerHTML = "<p>No output to display.</p>"; return; }
+
+    let html = "<table><thead><tr>";
+    OUT_HEADERS.forEach(h => html += `<th>${h}</th>`);
+    html += "</tr></thead><tbody>";
+
+    rows.forEach(r => {
+      html += "<tr>";
+      OUT_HEADERS.forEach(h => html += `<td>${(r[h] ?? "").toString()}</td>`);
+      html += "</tr>";
+    });
+
+    html += "</tbody></table>";
+    container.innerHTML = html;
+  }
+
+  function clearAll() {
+    poRows = [];
+    trackingByOrder = {};
+    lastOutput = [];
+    document.getElementById("tableContainer").innerHTML = "";
+    document.getElementById("fileInput").value = "";
+    document.getElementById("matchFileInput").value = "";
+    setStatus("Status: cleared. Upload PO + Tracking again.");
+  }
+</script>
+
 </body>
 </html>
