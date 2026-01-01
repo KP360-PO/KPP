@@ -134,8 +134,7 @@
     <button id="generateUpdateOnlyBtn" class="button warning" disabled>Remove Unnecessary Data</button>
     <button id="downloadUpdateOnlyBtn" class="button primary" disabled>Download Channel Advisor File</button>
 
-    <button id="removeDuplicatesBtn" class="button warning" disabled>Remove Duplicates (KSI_no)</button>
-    <button id="removeZeroQtyBtn" class="button warning" disabled>Remove "0" Qty (qty)</button>
+    <button id="removeZeroQtyBtn" class="button warning" disabled>Remove "0" Qty (QTY)</button>
     <button id="downloadFinalBtn" class="button primary" disabled>Download ZenMighty File</button>
 
     <button id="clearBtn" class="button danger">Clear</button>
@@ -173,11 +172,18 @@
     };
 
     const disableAllStepButtons = () => {
-      ["generateUpdateOnlyBtn", "downloadUpdateOnlyBtn", "removeDuplicatesBtn", "removeZeroQtyBtn", "downloadFinalBtn"]
+      ["generateUpdateOnlyBtn", "downloadUpdateOnlyBtn", "removeZeroQtyBtn", "downloadFinalBtn"]
         .forEach(id => btn(id).disabled = true);
     };
 
     const safeTrim = (v) => (v === null || v === undefined) ? "" : String(v).trim();
+
+    // Tries to locate the QTY column (case-insensitive, trimmed)
+    const findQtyIndex = (headerRow) => {
+      const normalized = (s) => safeTrim(s).toLowerCase();
+      const idx = headerRow.findIndex(h => normalized(h) === "qty");
+      return idx;
+    };
 
     const parseQty = (v) => {
       const s = safeTrim(v);
@@ -202,6 +208,7 @@
           const data = evt.target.result;
           workbook = XLSX.read(data, { type: 'array' });
           const firstSheetName = workbook.SheetNames[0];
+
           if (!firstSheetName) {
             notify("No sheets found in this workbook.", true);
             workbook = null;
@@ -217,7 +224,6 @@
             return;
           }
 
-          // Ensure header row exists
           if (!Array.isArray(originalData[0]) || originalData[0].length === 0) {
             notify("Header row looks empty. Please check the file format.", true);
             workbook = null;
@@ -233,10 +239,7 @@
         }
       };
 
-      reader.onerror = () => {
-        notify("Could not read the file.", true);
-      };
-
+      reader.onerror = () => notify("Could not read the file.", true);
       reader.readAsArrayBuffer(file);
     });
 
@@ -246,20 +249,17 @@
       setLoading(true);
 
       setTimeout(() => {
-        // Remove column K (index 10) safely from every row
-        const colIndexToRemove = 10;
+        const colIndexToRemove = 10; // Column K (0-based index)
         updateOnlyData = originalData.map(row => {
           const newRow = Array.isArray(row) ? [...row] : [];
-          if (newRow.length > colIndexToRemove) {
-            newRow.splice(colIndexToRemove, 1);
-          }
+          if (newRow.length > colIndexToRemove) newRow.splice(colIndexToRemove, 1);
           return newRow;
         });
 
         btn('downloadUpdateOnlyBtn').disabled = false;
-        btn('removeDuplicatesBtn').disabled = false;
+        btn('removeZeroQtyBtn').disabled = false;
 
-        notify('Unnecessary data removed (Column K). You can now download the Channel Advisor file.');
+        notify('Unnecessary data removed (Column K). You can now download the Channel Advisor file, or remove 0 qty (QTY).');
       }, 250);
     });
 
@@ -282,62 +282,29 @@
       }, 150);
     });
 
-    btn('removeDuplicatesBtn').addEventListener('click', () => {
+    btn('removeZeroQtyBtn').addEventListener('click', () => {
       if (!updateOnlyData.length) return notify("Please run 'Remove Unnecessary Data' first.", true);
 
       setLoading(true);
 
       setTimeout(() => {
         const header = updateOnlyData[0] || [];
-        const ksiIndex = header.indexOf("KSI_no");
-        if (ksiIndex === -1) return notify('Column "KSI_no" not found.', true);
+        const qtyIndex = findQtyIndex(header);
 
-        const seen = new Set();
-        const filtered = [header];
-
-        for (let i = 1; i < updateOnlyData.length; i++) {
-          const row = updateOnlyData[i] || [];
-          const keyRaw = row[ksiIndex];
-          const key = safeTrim(keyRaw);
-
-          // If blank, keep it (don’t accidentally delete valid rows with empty keys)
-          if (key === "") {
-            filtered.push(row);
-            continue;
-          }
-
-          if (!seen.has(key)) {
-            seen.add(key);
-            filtered.push(row);
-          }
+        if (qtyIndex === -1) {
+          return notify('Column "QTY" not found (case-insensitive). Please check the header name.', true);
         }
 
-        finalCleanedData = filtered;
-        btn('removeZeroQtyBtn').disabled = false;
-
-        notify("Duplicates removed from 'KSI_no'. You may now remove 0 qty.");
-      }, 250);
-    });
-
-    btn('removeZeroQtyBtn').addEventListener('click', () => {
-      if (!finalCleanedData.length) return notify("Please remove duplicates first.", true);
-
-      setLoading(true);
-
-      setTimeout(() => {
-        const header = finalCleanedData[0] || [];
-        const qtyIndex = header.indexOf("qty");
-        if (qtyIndex === -1) return notify('Column "qty" not found.', true);
-
-        finalCleanedData = finalCleanedData.filter((row, idx) => {
+        // Start from updateOnlyData, remove rows where qty == 0
+        finalCleanedData = updateOnlyData.filter((row, idx) => {
           if (idx === 0) return true; // keep header
           const qty = parseQty((row || [])[qtyIndex]);
-          // remove if qty is exactly 0
+          // remove if qty is exactly 0 (handles 0, "0", " 0 ", "0.0")
           return !(Number.isFinite(qty) && qty === 0);
         });
 
         btn('downloadFinalBtn').disabled = false;
-        notify('Rows with 0 qty removed. Ready to download ZenMighty file.');
+        notify('Rows with 0 QTY removed. Ready to download ZenMighty file.');
       }, 250);
     });
 
