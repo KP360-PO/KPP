@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KarParts360 | SKU Availability Checker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --kp-navy: #0b1830;
+      --kp-navy-soft: #152441;
+      --kp-orange: #f47b20;
+      --kp-orange-dark: #d9650f;
+      --kp-blue: #1f7bdc;
+      --kp-border: #d6dde8;
+      --kp-bg: #f3f5f9;
+      --kp-text-main: #202535;
+      --kp-text-muted: #6f7483;
+      --card-bg: #ffffff;
+      --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1e345c 0, #0b1830 40%, #050712 100%);
+      color: var(--kp-text-main);
+      display: flex;
+      justify-content: center;
+      padding: 32px 12px;
+    }
+
+    .app { width: 100%; max-width: 1120px; }
+
+    .app-header {
+      background: linear-gradient(135deg, var(--kp-navy-soft), #111f3a);
+      border-radius: 18px;
+      padding: 16px 20px;
+      margin-bottom: 18px;
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 14px 35px rgba(0,0,0,0.35);
+      color: #eef3ff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .app-header h1 { margin: 0; font-size: 1.5rem; }
+    .app-header p { margin: 4px 0 0; font-size: 0.83rem; color: #c5cbe0; }
+
+    .badge-env {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.25);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(11, 24, 48, 0.7);
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #5fe1a1;
+    }
+
+    .section {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 16px 18px 14px;
+      margin-bottom: 16px;
+      border: 1px solid var(--kp-border);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-title { display: flex; align-items: center; gap: 10px; }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--kp-text-main);
+    }
+
+    .step-badge {
+      width: 26px; height: 26px;
+      border-radius: 999px;
+      background: #fef3e9;
+      color: var(--kp-orange-dark);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border: 1px solid #f9d1a4;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--kp-text-main);
+    }
+
+    input[type="file"] {
+      margin-top: 6px;
+      margin-bottom: 8px;
+      display: block;
+      font-size: 0.9rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--kp-border);
+      width: 100%;
+      max-width: 420px;
+      background: var(--kp-bg);
+      color: var(--kp-text-main);
+    }
+
+    input[type="file"]:focus-visible {
+      outline: 2px solid var(--kp-blue);
+      outline-offset: 1px;
+      border-color: var(--kp-blue);
+      background: #ffffff;
+    }
+
+    button {
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 999px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    button.primary {
+      background: var(--kp-orange);
+      color: #fff;
+      box-shadow: 0 8px 16px rgba(244, 123, 32, 0.35);
+    }
+
+    button.primary:hover {
+      background: var(--kp-orange-dark);
+      transform: translateY(-1px);
+    }
+
+    .small-note {
+      font-size: 0.78rem;
+      color: var(--kp-text-muted);
+      margin-top: 3px;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin-top: 12px;
+      width: 100%;
+      background: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 0.83rem;
+    }
+
+    thead {
+      background: linear-gradient(90deg, #0b1830 0%, #1c325d 40%, #27477d 100%);
+      color: #e3ecff;
+    }
+
+    th, td {
+      padding: 7px 10px;
+      text-align: left;
+      border-bottom: 1px solid #e1e6f0;
+    }
+
+    th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    tbody tr:nth-child(even) { background: #f7f8fc; }
+    tbody tr:hover { background: #edf1fc; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .badge-available {
+      background: #e6f7ef;
+      color: #147a4e;
+      border: 1px solid #b9ebd1;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div>
+        <h1>KarParts360 | SKU Availability Checker</h1>
+        <p>Multi-warehouse inventory check driven by PO# + SKU (NJ · IL · GA · CA).</p>
+      </div>
+      <div>
+        <span class="badge-env">
+          <span class="badge-dot"></span>
+          Internal Tool
+        </span>
+      </div>
+    </header>
+
+    <!-- STEP 1: INVENTORY -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="step-badge">1</div>
+          <h2>Load Inventory Exports</h2>
+        </div>
+        <span class="small-note">8 → NJ · 34 → IL · 28 → GA · 22 → CA</span>
+      </div>
+
+      <label for="inventoryFiles">Inventory files (.xlsx)</label>
+      <input type="file" id="inventoryFiles" accept=".xlsx,.xls" multiple />
+      <div id="inventoryStatus" class="small-note">
+        Tip: Select all 4 inventory files at once (8, 34, 28, 22).
+      </div>
+    </div>
+
+    <!-- STEP 2: PO -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="step-badge">2</div>
+          <h2>Load PO / Order File</h2>
+        </div>
+        <span class="small-note">Uses only PO# + SKU columns</span>
+      </div>
+
+      <label for="poFile">PO file (.csv, .xlsx, .xls)</label>
+      <input type="file" id="poFile" accept=".csv,.xlsx,.xls" />
+      <div id="poStatus" class="small-note"></div>
+
+      <div style="margin-top: 8px;">
+        <button id="checkButton" class="primary">
+          🔍 Check PO vs Inventory
+        </button>
+      </div>
+
+      <div id="bulkMessage" class="small-note" style="margin-top:6px;"></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="step-badge">3</div>
+          <h2>Results (Available SKUs Only)</h2>
+        </div>
+      </div>
+
+      <div id="resultsContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    const inventoryByLocation = { NJ: {}, IL: {}, GA: {}, CA: {} };
+    let poRows = [];
+    let skuColumnName = null;
+    let poColumnName = null;
+
+    const inventoryStatus = document.getElementById("inventoryStatus");
+    const poStatus = document.getElementById("poStatus");
+    const resultsContainer = document.getElementById("resultsContainer");
+    const bulkMessage = document.getElementById("bulkMessage");
+
+    function inferLocationFromInventoryFileName(name) {
+      const up = name.toUpperCase();
+      if (up.includes("NJ")) return "NJ";
+      if (up.includes("IL")) return "IL";
+      if (up.includes("GA")) return "GA";
+      if (up.includes("CA")) return "CA";
+
+      const nums = up.match(/\d+/g);
+      if (!nums) return null;
+      if (nums.includes("8"))  return "NJ";
+      if (nums.includes("34")) return "IL";
+      if (nums.includes("28")) return "GA";
+      if (nums.includes("22")) return "CA";
+      return null;
+    }
+
+    function inferLocationFromPO(poValue) {
+      if (!poValue) return null;
+      const up = String(poValue).toUpperCase();
+      if (up.includes("NJ")) return "NJ";
+      if (up.includes("IL")) return "IL";
+      if (up.includes("GA")) return "GA";
+      if (up.includes("CA")) return "CA";
+      return null;
+    }
+
+    function readWorkbookFromFile(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: "array" });
+        callback(wb, file.name);
+      };
+      reader.onerror = function () {
+        alert("Error reading file: " + file.name);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Smarter detection: prefer "available", then "on hand/qoh", then generic "qty"
+    function detectInventoryColumns(rows) {
+      if (!rows.length) return { skuCol: null, qtyCol: null };
+      const keys = Object.keys(rows[0]);
+
+      let skuCol = null;
+      keys.forEach(k => {
+        if (!skuCol && k.toLowerCase().includes("sku")) skuCol = k;
+      });
+
+      let bestQtyCol = null;
+      let bestScore = -1;
+
+      keys.forEach(k => {
+        const lower = k.toLowerCase();
+        let score = 0;
+        if (lower.includes("avail")) score += 5; // Qty Available, Available
+        if (lower.includes("on hand") || lower.includes("onhand") || lower.includes("qoh")) score += 3;
+        if (lower.includes("stock")) score += 2;
+        if (lower.includes("qty") || lower.includes("quantity")) score += 1;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestQtyCol = k;
+        }
+      });
+
+      if (!skuCol && keys.includes("SKU")) skuCol = "SKU";
+      if (!bestQtyCol && keys.includes("QTY")) bestQtyCol = "QTY";
+
+      return { skuCol, qtyCol: bestQtyCol };
+    }
+
+    function loadInventoryFiles(fileList) {
+      const files = Array.from(fileList);
+      if (!files.length) {
+        inventoryStatus.textContent = "No inventory files selected.";
+        return;
+      }
+
+      for (const loc of ["NJ", "IL", "GA", "CA"]) {
+        inventoryByLocation[loc] = {};
+      }
+
+      let processed = 0;
+      const logMessages = [];
+
+      files.forEach(file => {
+        const loc = inferLocationFromInventoryFileName(file.name);
+        if (!loc) {
+          logMessages.push(`Skipped ${file.name} (cannot map to NJ/IL/GA/CA).`);
+          processed++;
+          if (processed === files.length) updateInventorySummary(logMessages);
+          return;
+        }
+
+        readWorkbookFromFile(file, function (wb, fileName) {
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet, { defval: null });
+
+          const { skuCol, qtyCol } = detectInventoryColumns(json);
+          if (!skuCol || !qtyCol) {
+            logMessages.push(`No SKU/QTY columns detected in ${fileName}.`);
+          } else {
+            const invMap = inventoryByLocation[loc];
+            json.forEach(row => {
+              const skuRaw = row[skuCol];
+              const qtyRaw = row[qtyCol];
+              if (skuRaw == null) return;
+              const sku = String(skuRaw).trim();
+              const qty = Number(qtyRaw || 0);
+              if (!sku) return;
+              invMap[sku] = (invMap[sku] || 0) + qty;
+            });
+
+            logMessages.push(
+              `Loaded ${fileName} → ${loc} (SKU="${skuCol}", QTY="${qtyCol}")`
+            );
+          }
+
+          processed++;
+          if (processed === files.length) {
+            updateInventorySummary(logMessages);
+          }
+        });
+      });
+    }
+
+    function updateInventorySummary(messages) {
+      const counts = {};
+      for (const loc of ["NJ", "IL", "GA", "CA"]) {
+        counts[loc] = Object.keys(inventoryByLocation[loc]).length;
+      }
+      inventoryStatus.innerHTML =
+        `Inventory loaded – SKUs per warehouse: NJ=${counts.NJ}, IL=${counts.IL}, GA=${counts.GA}, CA=${counts.CA}.` +
+        (messages.length ? "<br>" + messages.join("<br>") : "");
+      console.log("Inventory maps", inventoryByLocation);
+    }
+
+    function detectPOColumns(rows) {
+      skuColumnName = null;
+      poColumnName = null;
+      if (!rows.length) return;
+
+      const keys = Object.keys(rows[0]);
+      keys.forEach(k => {
+        const lower = k.toLowerCase();
+        if (!skuColumnName && lower.includes("sku")) skuColumnName = k;
+        if (!poColumnName && lower.includes("po")) poColumnName = k;
+      });
+    }
+
+    function loadPOFile(file) {
+      poRows = [];
+      poStatus.textContent = "Reading PO file...";
+
+      readWorkbookFromFile(file, function (wb, fileName) {
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, { defval: null });
+        poRows = json;
+
+        detectPOColumns(poRows);
+
+        if (!skuColumnName || !poColumnName) {
+          let msg = "Could not detect required columns.\n";
+          msg += "Found columns: " + (poRows[0] ? Object.keys(poRows[0]).join(", ") : "none") + "\n";
+          msg += 'Need one header containing "sku" and one containing "po".';
+          alert(msg);
+          poStatus.textContent = "PO loaded, but columns not detected. Check headers.";
+        } else {
+          poStatus.textContent =
+            `PO loaded: ${poRows.length} rows from ${fileName}. Using SKU="${skuColumnName}", PO#="${poColumnName}".`;
+        }
+      });
+    }
+
+    document.getElementById("inventoryFiles").addEventListener("change", function () {
+      if (this.files && this.files.length) loadInventoryFiles(this.files);
+    });
+
+    document.getElementById("poFile").addEventListener("change", function () {
+      if (this.files && this.files[0]) loadPOFile(this.files[0]);
+    });
+
+    document.getElementById("checkButton").addEventListener("click", function () {
+      resultsContainer.innerHTML = "";
+      bulkMessage.textContent = "";
+
+      const anyInventoryLoaded = Object.values(inventoryByLocation).some(
+        inv => Object.keys(inv).length > 0
+      );
+      if (!anyInventoryLoaded) {
+        alert("Load at least one inventory file first.");
+        return;
+      }
+      if (!poRows.length) {
+        alert("Load a PO file first.");
+        return;
+      }
+      if (!skuColumnName || !poColumnName) {
+        alert('PO file is loaded but columns not detected. Need headers containing "sku" and "po".');
+        return;
+      }
+
+      let html = "<table>";
+      html += "<thead><tr>" +
+        "<th>#</th><th>PO#</th><th>Warehouse</th><th>SKU</th><th>Availability</th><th>QTY</th>" +
+        "</tr></thead><tbody>";
+
+      let visibleIndex = 0;
+      let availableCount = 0, outCount = 0, missingCount = 0, noInvLocCount = 0;
+
+      poRows.forEach(row => {
+        const skuRaw = row[skuColumnName];
+        const poRaw  = row[poColumnName];
+
+        const sku = skuRaw ? String(skuRaw).trim() : "";
+        const po  = poRaw ? String(poRaw).trim() : "";
+
+        if (!sku) {
+          missingCount++;
+          return;
+        }
+
+        const loc = inferLocationFromPO(po);
+        if (!loc) {
+          noInvLocCount++;
+          return;
+        }
+
+        const invMap = inventoryByLocation[loc];
+        if (!invMap || Object.keys(invMap).length === 0) {
+          noInvLocCount++;
+          return;
+        }
+
+        if (invMap.hasOwnProperty(sku)) {
+          const qty = Number(invMap[sku] || 0);
+          if (qty > 0) {
+            visibleIndex++;
+            availableCount++;
+            html += `<tr>
+              <td>${visibleIndex}</td>
+              <td>${po}</td>
+              <td>${loc}</td>
+              <td>${sku}</td>
+              <td><span class="badge badge-available">Available</span></td>
+              <td>${qty}</td>
+            </tr>`;
+          } else {
+            outCount++;
+          }
+        } else {
+          missingCount++;
+        }
+      });
+
+      html += "</tbody></table>";
+      resultsContainer.innerHTML = html;
+
+      bulkMessage.textContent =
+        `${availableCount} available (shown). ${outCount} out of stock. ${missingCount} SKU not found. ${noInvLocCount} unknown warehouse / no inventory.`;
+    });
+  </script>
+</body>
+</html>
