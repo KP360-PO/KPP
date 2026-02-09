@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory Master Lookup Tool</title>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #cbd5e1;
+      --text: #1e293b;
+      --success-bg: #dcfce7;
+      --success-text: #166534;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      line-height: 1.5;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; }
+    h2 { color: var(--primary); margin-top: 0; }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    /* Inputs */
+    .input-group { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+    input[type="text"] {
+      flex-grow: 1; padding: 12px; border: 2px solid var(--border);
+      border-radius: 6px; font-size: 16px; transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { outline: none; border-color: var(--primary); }
+
+    /* Buttons */
+    button {
+      background-color: var(--primary); color: white; border: none;
+      padding: 0 24px; border-radius: 6px; cursor: pointer;
+      font-weight: 600; font-size: 15px; transition: opacity 0.2s;
+    }
+    button:hover:not(:disabled) { opacity: 0.9; }
+    button:disabled { background-color: #94a3b8; cursor: not-allowed; }
+    button.secondary { background-color: #64748b; }
+    button.reset { background-color: #ef4444; }
+
+    /* Status Bar */
+    #status-bar {
+      margin-top: 10px; font-size: 0.9em; font-weight: 500; color: #475569;
+      background: #f1f5f9; padding: 10px; border-radius: 6px; display: none;
+    }
+
+    /* Tables */
+    .result-section { margin-top: 25px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .result-header {
+      padding: 10px 15px; font-weight: bold; font-size: 1.05em;
+      background-color: #eee; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+    th, td { padding: 10px 15px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background-color: #fafafa; color: #555; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    
+    /* Vendor Themes */
+    .theme-tyc .result-header { background: #f3e8ff; color: #6b21a8; }
+    .theme-depo .result-header { background: #fff7ed; color: #9a3412; }
+    .theme-ksi .result-header { background: #e0f2fe; color: #075985; }
+    .theme-eagle .result-header { background: #f0fdf4; color: #166534; }
+    .theme-usa .result-header { background: #ffe4e6; color: #9f1239; }
+
+    /* Badges */
+    .qty-badge {
+      display: inline-block; padding: 3px 8px; border-radius: 12px;
+      font-weight: bold; font-size: 0.85em; background: #e2e8f0; color: #475569;
+    }
+    .qty-pos { background: var(--success-bg); color: var(--success-text); }
+    
+    .loading { color: var(--primary); font-weight: bold; display: flex; align-items: center; gap: 8px; }
+    
+    /* Instructions */
+    .file-guide {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px; margin-top: 10px; font-size: 0.85em;
+    }
+    .guide-item { padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; }
+    .guide-item b { display: block; margin-bottom: 2px; }
+
+    #watermark { position: fixed; bottom: 5px; right: 10px; font-size: 10px; color: #ccc; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>📦 Partslink Master Search</h2>
+
+  <div class="card">
+    <label style="font-weight:bold; display:block; margin-bottom:8px;">1. Upload Inventory Files</label>
+    <input type="file" id="filesInput" multiple accept=".csv,.xls,.xlsx" style="width:100%; padding:10px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:6px;"/>
+    
+    <div class="file-guide">
+      <div class="guide-item" style="border-left: 3px solid #6b21a8"><b>TYC</b> Filename: "TYC"</div>
+      <div class="guide-item" style="border-left: 3px solid #075985"><b>KSI</b> Filenames: "KSI NJ", "KSI GA", "KSI IL"</div>
+      <div class="guide-item" style="border-left: 3px solid #9a3412"><b>DEPO</b> Filename: "DEPO"</div>
+      <div class="guide-item" style="border-left: 3px solid #166534"><b>EAGLE</b> Filenames: "EAGLE NJ", "EAGLE CA"</div>
+      <div class="guide-item" style="border-left: 3px solid #9f1239"><b>USA WH</b> "KP360", "McDonough", "333", "100Ryan"</div>
+    </div>
+    
+    <div id="status-bar"></div>
+  </div>
+
+  <div class="card">
+    <label style="font-weight:bold;">2. Search Inventory</label>
+    <div class="input-group">
+      <input type="text" id="searchInput" placeholder="Enter Partslink Number (e.g. FO2819124)" disabled />
+      <button id="searchBtn" disabled>Search</button>
+      <button id="clearBtn" class="secondary">Clear</button>
+      <button id="resetBtn" class="reset">Reset</button>
+    </div>
+  </div>
+
+  <div id="resultsArea"></div>
+</div>
+
+<div id="watermark">jerrilyn</div>
+
+<script>
+// --- State ---
+const db = {
+  tyc: [],
+  depo: [],
+  ksi: { nj: [], ga: [], il: [] },
+  eagle: { nj: [], ca: [] },
+  usa: { kp360: [], mcd: [], charles: [], ryan: [] }
+};
+
+// --- DOM ---
+const ui = {
+  files: document.getElementById('filesInput'),
+  input: document.getElementById('searchInput'),
+  btn: document.getElementById('searchBtn'),
+  clear: document.getElementById('clearBtn'),
+  reset: document.getElementById('resetBtn'),
+  status: document.getElementById('status-bar'),
+  results: document.getElementById('resultsArea')
+};
+
+// --- Helpers ---
+const clean = (val) => val ? String(val).trim() : '';
+const norm = (val) => val ? String(val).toUpperCase().replace(/[^A-Z0-9]/g, '') : ''; // Removes dashes/spaces
+
+// --- File Processor ---
+ui.files.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  ui.status.style.display = 'block';
+  ui.status.innerHTML = `<span class="loading">⏳ Processing ${files.length} files...</span>`;
+  ui.btn.disabled = true;
+
+  // Reset DB
+  Object.keys(db).forEach(k => {
+    if(Array.isArray(db[k])) db[k] = [];
+    else Object.keys(db[k]).forEach(sub => db[k][sub] = []);
+  });
+
+  const processors = files.map(file => processFile(file));
+  await Promise.all(processors);
+
+  // Summary
+  const count = (arr) => arr.length;
+  const ksiTotal = count(db.ksi.nj) + count(db.ksi.ga) + count(db.ksi.il);
+  const usaTotal = count(db.usa.kp360) + count(db.usa.mcd) + count(db.usa.charles) + count(db.usa.ryan);
+  
+  ui.status.innerHTML = `✅ <b>Ready!</b> Loaded: TYC(${count(db.tyc)}) | DEPO(${count(db.depo)}) | KSI(${ksiTotal}) | EAGLE(${count(db.eagle.nj)+count(db.eagle.ca)}) | USA(${usaTotal})`;
+  ui.btn.disabled = false;
+  ui.input.disabled = false;
+  ui.input.focus();
+});
+
+function processFile(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        // Use 'header:1' to get array of arrays (Row 1 = index 0)
+        // This is safer for KSI/CSV files with weird headers
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        const fname = file.name.toLowerCase();
+
+        if (fname.includes('tyc')) {
+          // TYC: headers usually row 0
+          const headers = rows[0].map(h => clean(h).toLowerCase());
+          const mapRow = (r) => {
+            const obj = {};
+            headers.forEach((h, i) => obj[h] = r[i]);
+            return obj;
+          };
+          db.tyc = rows.slice(1).map(mapRow);
+        }
+        else if (fname.includes('depo')) {
+          // DEPO: Keep as raw rows (Index 0=Sku, 1=Partslink)
+          db.depo = rows; 
+        }
+        else if (fname.includes('ksi')) {
+          // KSI Logic: Find header row index dynamically
+          // Headers: maker_desc, model_desc, KSI_no, link_no, ...
+          let headerIdx = -1;
+          let colKsi = -1, colLink = -1, colQty = -1, colDist = -1;
+
+          // Find the row that contains 'link_no' or 'partslink'
+          for(let i=0; i<Math.min(rows.length, 20); i++) {
+            const r = rows[i].map(c => clean(c).toLowerCase());
+            if (r.includes('link_no') || r.includes('ksi_no')) {
+              headerIdx = i;
+              colKsi = r.findIndex(c => c.includes('ksi_no'));
+              colLink = r.findIndex(c => c.includes('link_no')); // Column D usually
+              colQty = r.findIndex(c => c === 'qty');
+              colDist = r.findIndex(c => c.includes('district'));
+              break;
+            }
+          }
+
+          if (headerIdx > -1) {
+            const cleanRows = rows.slice(headerIdx + 1).map(r => ({
+              ksi: clean(r[colKsi]),
+              link: clean(r[colLink]),
+              qty: clean(r[colQty]) || '0',
+              distQty: clean(r[colDist]) || '0'
+            })).filter(o => o.link); // Must have partslink
+
+            if (fname.includes('nj')) db.ksi.nj = cleanRows;
+            else if (fname.includes('ga')) db.ksi.ga = cleanRows;
+            else if (fname.includes('il')) db.ksi.il = cleanRows;
+          }
+        }
+        else if (fname.includes('eagle')) {
+          // EAGLE: Col G(6)=Partslink, A(0)=Sku, Q(16)=Avail
+          const eagleData = rows.filter(r => r[6]).map(r => ({
+            sku: clean(r[0]),
+            link: norm(r[6]),
+            avail: clean(r[16])
+          }));
+          if (fname.includes('nj')) db.eagle.nj = eagleData;
+          else if (fname.includes('ca')) db.eagle.ca = eagleData;
+        }
+        else if (fname.includes('kp360') || fname.includes('mcdonough') || fname.includes('charles') || fname.includes('ryan')) {
+          // USA Warehouses: SUPPLIER, SKU, PARTSLINK, QTY
+          // Usually row 0 is header. Col 1=SKU, 2=Partslink, 3=Qty
+          // Verify header
+          const r0 = rows[0].map(c => clean(c).toUpperCase());
+          let idxLink = r0.indexOf('PARTSLINK');
+          let idxSku = r0.indexOf('SKU');
+          let idxQty = r0.indexOf('QTY');
+          
+          if (idxLink === -1) idxLink = 2; // Fallback
+          if (idxQty === -1) idxQty = 3;
+
+          const usaData = rows.slice(1).map(r => ({
+            sku: clean(r[idxSku]),
+            link: norm(r[idxLink]),
+            qty: clean(r[idxQty])
+          })).filter(o => o.link);
+
+          if (fname.includes('kp360')) db.usa.kp360 = usaData;
+          else if (fname.includes('mcdonough')) db.usa.mcd = usaData;
+          else if (fname.includes('333')) db.usa.charles = usaData;
+          else if (fname.includes('ryan')) db.usa.ryan = usaData;
+        }
+
+      } catch (err) {
+        console.error("Parse Error:", file.name, err);
+      }
+      resolve();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// --- Search Logic ---
+ui.btn.addEventListener('click', runSearch);
+ui.input.addEventListener('keypress', e => e.key === 'Enter' && runSearch());
+
+function runSearch() {
+  const val = ui.input.value.trim();
+  if (!val) return;
+  
+  const query = norm(val);
+  ui.results.innerHTML = '';
+  let html = '';
+  let found = false;
+
+  // 1. TYC
+  const tyc = db.tyc.filter(r => norm(r['partslink number']) === query);
+  if (tyc.length) {
+    found = true;
+    html += buildTable('TYC Inventory', 'theme-tyc', ['Warehouse','Item No','Qty'], 
+      tyc.map(r => `<td>${r['warehouse']}</td><td>${r['item number']}</td><td>${mkBadge(r['saleable quantity'])}</td>`)
+    );
+  }
+
+  // 2. USA Warehouses (New Files)
+  const usaHits = [];
+  const checkUsa = (arr, loc) => arr.filter(r => r.link === query).forEach(r => usaHits.push({...r, loc}));
+  
+  checkUsa(db.usa.kp360, 'KP360');
+  checkUsa(db.usa.mcd, 'McDonough');
+  checkUsa(db.usa.charles, '333 Charles');
+  checkUsa(db.usa.ryan, '100 Ryan');
+
+  if (usaHits.length) {
+    found = true;
+    html += buildTable('USA Warehouses', 'theme-usa', ['Location','SKU','Qty'],
+      usaHits.map(r => `<td>${r.loc}</td><td>${r.sku}</td><td>${mkBadge(r.qty)}</td>`)
+    );
+  }
+
+  // 3. KSI
+  const checkKsi = (arr, loc) => {
+    // KSI Match: match partslink OR ksi_no (just in case)
+    const hits = arr.filter(r => norm(r.link) === query || norm(r.ksi) === query);
+    // Deduplicate by KSI Number
+    const unique = [];
+    const seen = new Set();
+    hits.forEach(h => {
+      if(!seen.has(h.ksi)) { seen.add(h.ksi); unique.push({...h, loc}); }
+    });
+    return unique;
+  };
+  
+  const ksiHits = [
+    ...checkKsi(db.ksi.nj, 'KSI New Jersey'),
+    ...checkKsi(db.ksi.ga, 'KSI Georgia'),
+    ...checkKsi(db.ksi.il, 'KSI Illinois')
+  ];
+
+  if (ksiHits.length) {
+    found = true;
+    html += buildTable('KSI Inventory', 'theme-ksi', ['Location','KSI No', 'Qty', 'District Qty'],
+      ksiHits.map(r => `<td>${r.loc}</td><td>${r.ksi}</td><td>${mkBadge(r.qty)}</td><td>${r.distQty}</td>`)
+    );
+  }
+
+  // 4. DEPO
+  const depoHits = db.depo.slice(1).filter(r => {
+    const pl = norm(r[1]);
+    return pl === query || (query.length > 5 && pl.startsWith(query));
+  });
+  
+  // Dedup DEPO by SKU (Index 0)
+  const depoUnique = [];
+  const depoSeen = new Set();
+  depoHits.forEach(r => {
+    if(!depoSeen.has(r[0])) { depoSeen.add(r[0]); depoUnique.push(r); }
+  });
+
+  if (depoUnique.length) {
+    found = true;
+    html += buildTable('DEPO Inventory', 'theme-depo', ['SKU','NJ','IL','GA','CA'],
+      depoUnique.map(r => `<td>${r[0]}</td><td>${r[2]||0}</td><td>${r[3]||0}</td><td>${r[4]||0}</td><td>${r[5]||0}</td>`)
+    );
+  }
+
+  // 5. EAGLE
+  const eagleHits = [
+    ...db.eagle.nj.filter(r => r.link.startsWith(query)).map(r => ({...r, loc: 'Eagle NJ'})),
+    ...db.eagle.ca.filter(r => r.link.startsWith(query)).map(r => ({...r, loc: 'Eagle CA'}))
+  ];
+  
+  if (eagleHits.length) {
+    found = true;
+    html += buildTable('Eagle Inventory', 'theme-eagle', ['Location', 'SKU', 'Availability'],
+      eagleHits.map(r => `<td>${r.loc}</td><td>${r.sku}</td><td>${r.avail}</td>`)
+    );
+  }
+
+  if (!found) {
+    ui.results.innerHTML = `<div style="text-align:center; padding:30px; color:#64748b;">
+      <h3>❌ No matches found for "${val}"</h3>
+      <p>Check the number or ensure the relevant file is uploaded.</p>
+    </div>`;
+  } else {
+    ui.results.innerHTML = html;
+  }
+}
+
+// --- Utils ---
+function buildTable(title, theme, headers, rows) {
+  return `<div class="result-section ${theme}">
+    <div class="result-header">
+      <span>${title}</span>
+    </div>
+    <table>
+      <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+      ${rows.map(r => `<tr>${r}</tr>`).join('')}
+    </table>
+  </div>`;
+}
+
+function mkBadge(qty) {
+  const q = parseInt(qty) || 0;
+  const cls = q > 0 ? 'qty-pos' : '';
+  return `<span class="qty-badge ${cls}">${qty}</span>`;
+}
+
+ui.clear.addEventListener('click', () => {
+  ui.input.value = '';
+  ui.results.innerHTML = '';
+  ui.input.focus();
+});
+
+ui.reset.addEventListener('click', () => location.reload());
+
+</script>
+</body>
+</html>
