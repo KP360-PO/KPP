@@ -1129,8 +1129,9 @@ if (!hasJWL) {
           var ship = val(tr.children[idxShipFrom]);
           var fee  = val(tr.children[idxFee]);
 
-          if (shipFromMatches(ship) && fee !== ''){
-            tr.classList.add('kp-row-warn');
+          var feeNum = parseFloat(String(fee || '').replace(/[^0-9.\-]/g,''));
+          if (shipFromMatches(ship) && isFinite(feeNum) && feeNum > 0){
+          tr.classList.add('kp-row-warn');
           }
         }
       }
