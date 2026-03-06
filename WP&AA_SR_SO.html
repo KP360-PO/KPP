@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>WooParts & AutoApex — Sales Report/Order Generator</title>
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>WooParts — Sales Report/Order Generator</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>:root{--bg:#f6f8fb;--panel:#fff;--panel-2:#fcfdff;--text:#0f172a;--muted:#445268;--brand:#2563eb;--brand-2:#06b6d4;--border:#dbe2ea;--ring:rgba(37,99,235,.25);--chip-bg:#f8fafc;--chip-border:#e2e8f0;--input-bg:#fff;--input-border:#cbd5e1;--input-text:#0f172a;--table-alt:#f1f5f9;--table-hover:#eef6ff;--button-text:#fff}:root[data-theme="dark"]{--bg:#0b1220;--panel:#0f172a;--panel-2:#0b1224;--text:#e6edf3;--muted:#9fb1c7;--brand:#60a5fa;--brand-2:#22d3ee;--border:#1f2a3a;--ring:rgba(110,231,255,.35);--chip-bg:#0f172a;--chip-border:#1f2a3a;--input-bg:#0b1220;--input-border:#233048;--input-text:#e6edf3;--table-alt:rgba(255,255,255,.02);--table-hover:rgba(96,165,250,.07);--button-text:#0b1220}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui;padding:14px}.shell{width:100%}.header,.controls{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}.controls{position:sticky;top:8px;z-index:10}h1{margin:0;font-size:20px}.left-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.right-tools{display:flex;gap:8px;align-items:center;justify-content:flex-end}input[type="file"],.top-input{padding:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--input-text);border-radius:10px;min-width:240px}button{padding:9px 12px;border:0;border-radius:10px;background:linear-gradient(180deg,var(--brand),var(--brand-2));color:var(--button-text);font-weight:600;cursor:pointer}button[disabled]{opacity:.55;cursor:not-allowed}.pill{padding:6px 10px;border:1px solid var(--input-border);border-radius:999px;background:var(--input-bg);color:#445268;font-size:12px;cursor:pointer}.pill.active{outline:3px solid var(--ring)}#meta{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}.chip{font-size:12px;border:1px solid var(--chip-border);background:var(--chip-bg);border-radius:999px;padding:6px 10px;color:#475569}.chip.ok{border-color:#16a34a;color:#166534;background:#ecfdf5}.chip.warn{border-color:#f59e0b;color:#92400e;background:#fffbeb}.chip.err{border-color:#ef4444;color:#991b1b;background:#fef2f2}.table-wrap{width:100%;height:auto;overflow:auto;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 6px 18px rgba(0,0,0,.12)}table{width:100%;border-collapse:separate;border-spacing:0}thead th{position:sticky;top:0;z-index:5;background:var(--panel);color:var(--text);text-align:left;padding:10px 12px;font-weight:600;font-size:12px;letter-spacing:.2px;border-bottom:1px solid var(--border);white-space:nowrap}tbody td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)}tbody tr:nth-child(odd) td{background:var(--table-alt)}tbody tr:hover td{background:var(--table-hover)}.po-edit,.cf-edit{width:var(--cell-input-width) !important;max-width:var(--cell-input-width) !important;padding:5px 6px;border:1px solid var(--input-border);border-radius:8px;background:var(--input-bg);color:var(--input-text);font-size:12px}.hidden{display:none}.author{margin:4px 0 0 0;font-size:13px;color:var(--muted);font-style:italic}.th-plus{margin-left:6px;padding:0 6px;line-height:18px;height:20px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);border-radius:6px;font-weight:700;cursor:pointer}</style>
@@ -7,7 +7,7 @@
 <style id="kp360-row-warning-style">tr.kp-row-warn>td{background:#fde2e1 !important}</style>
 <style id="kp360-tip-bubble-style">.kp-tip{position:fixed;z-index:999999;max-width:320px;padding:8px 10px;border-radius:6px;background:#111;color:#fff;font-size:12px;line-height:1.35;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none;opacity:0;transform:translateY(-4px);transition:opacity .12s ease,transform .12s ease;white-space:normal;word-break:break-word}.kp-tip.show{opacity:0.96;transform:translateY(0)}.kp-tip strong{font-weight:600}.kp-tip .kp-tip-head{display:block;margin-bottom:4px;font-weight:600;color:#fef3c7}.kp-tip .kp-tip-rule{color:#cbd5e1}td.kp-hl-red,td.kp-hl-yellow,tr.kp-row-warn>td{position:relative}</style>
 <style id="kp360-verify-modal-style">.kp-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);display:none;z-index:99998}.kp-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}.kp-modal.show,.kp-modal-backdrop.show{display:flex}.kp-modal-card{width:min(720px,92vw);max-height:82vh;overflow:hidden;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:0 20px 60px rgba(0,0,0,.35)}.kp-modal-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)}.kp-modal-title{font-weight:700}.kp-modal-body{padding:12px 14px}.kp-issues-wrap{border:1px solid var(--border);border-radius:10px;background:var(--chip-bg);padding:10px;max-height:48vh;overflow:auto}.kp-issues-wrap ul{margin:0;padding-left:18px}.kp-modal-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 14px;border-top:1px solid var(--border)}.kp-btn-ghost{background:transparent;border:1px solid var(--input-border);color:var(--text)}.kp-badge-err{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px}</style>
-</head><body><div class="shell"><div class="header" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div><h1>WooParts &amp; AutoApex — Sales Report/Order Generator</h1><p class="author">by Christine Anastacio</p></div><div class="right-tools"><button id="themeToggle">🌗</button></div></div><div class="controls" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div class="left-controls"><input type="file" id="fileInput" multiple accept=".xlsx, .xls, .csv" /><button class="secondary" onclick="resetAll()">Reset</button><div class="view-toggle" style="display:flex;gap:6px"><span id="pillReport" class="pill active" onclick="switchView('report')">Sales Report</span><span id="pillOrder" class="pill" onclick="switchView('order')">Sales Order</span></div></div><div class="right-tools" style="display:flex;gap:8px;align-items:center"><label for="exportFilename">Export as</label><input type="text" id="exportFilename" class="top-input" placeholder="File name" value="Sales_Report" /><button id="copyDropshipBtn" class="secondary" title="Copy all lines with Dropship ship-from">Copy Dropship</button><button id="copyJwlBtn" class="secondary" title="Copy Sales Report rows with JWL">Copy JWL</button><button id="verifyBtn" class="secondary hidden" title="Verify Sales Order table before export">Verify table</button><button id="exportBtn" onclick="exportCurrent()" disabled>Export Current View</button></div></div><div id="meta"><div id="totalOrders" class="chip">Total Orders: 0</div><div id="ordersByDate" class="chip">Orders by Date:</div><div id="verifyStatus" class="chip hidden"></div></div><div class="table-wrap" id="reportWrap"><table id="reportTable"><thead><tr><th>Order Date</th><th>Ship From</th><th>Order Number</th><th>Item SKU</th><th>Quantity</th><th>Custom Field 1</th><th>Custom Field 2</th><th>Custom Field 3</th><th>Order Total</th><th>Recipient</th><th>Rate</th><th>Service</th><th>Tracking Number</th><th>PO Number</th></tr></thead><tbody></tbody></table></div><div style="height:10px"></div><div class="table-wrap hidden" id="orderWrap"><table id="orderTable" data-view="order"><thead><tr><th>Order Date</th><th>Ship From</th><th>Order Number</th><th>Item SKU</th><th>Quantity</th><th>Custom Field 1</th><th>Custom Field 2</th><th>Custom Field 3</th><th>Order Total</th><th>Recipient</th><th>Carrier Fee</th><th>Service</th><th>Tracking Number</th><th>PO Reference Number</th><th>Memo <button type="button" class="th-plus" title="Add 'AutoApex' to all Memo cells" onclick="addAutoApexMemo()">+</button></th></tr></thead><tbody></tbody></table></div></div>
+</head><body><div class="shell"><div class="header" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div><h1>WooParts — Sales Report/Order Generator</h1><p class="author">by Christine Anastacio</p></div><div class="right-tools"><button id="themeToggle">🌗</button></div></div><div class="controls" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div class="left-controls"><input type="file" id="fileInput" multiple accept=".xlsx, .xls, .csv" /><button class="secondary" onclick="resetAll()">Reset</button><div class="view-toggle" style="display:flex;gap:6px"><span id="pillReport" class="pill active" onclick="switchView('report')">Sales Report</span><span id="pillOrder" class="pill" onclick="switchView('order')">Sales Order</span></div></div><div class="right-tools" style="display:flex;gap:8px;align-items:center"><label for="exportFilename">Export as</label><input type="text" id="exportFilename" class="top-input" placeholder="File name" value="Sales_Report" /><button id="copyDropshipBtn" class="secondary" title="Copy all lines with Dropship ship-from">Copy Dropship</button><button id="copyJwlBtn" class="secondary" title="Copy Sales Report rows with JWL">Copy JWL</button><button id="verifyBtn" class="secondary hidden" title="Verify Sales Order table before export">Verify table</button><button id="exportBtn" onclick="exportCurrent()" disabled>Export Current View</button></div></div><div id="meta"><div id="totalOrders" class="chip">Total Orders: 0</div><div id="ordersByDate" class="chip">Orders by Date:</div><div id="verifyStatus" class="chip hidden"></div></div><div class="table-wrap" id="reportWrap"><table id="reportTable"><thead><tr><th>Order Date</th><th>Ship From</th><th>Order Number</th><th>Item SKU</th><th>Quantity</th><th>Custom Field 1</th><th>Custom Field 2</th><th>Custom Field 3</th><th>Order Total</th><th>Recipient</th><th>Rate</th><th>Service</th><th>Tracking Number</th><th>PO Number</th></tr></thead><tbody></tbody></table></div><div style="height:10px"></div><div class="table-wrap hidden" id="orderWrap"><table id="orderTable" data-view="order"><thead><tr><th>Order Date</th><th>Ship From</th><th>Order Number</th><th>Item SKU</th><th>Quantity</th><th>Custom Field 1</th><th>Custom Field 2</th><th>Custom Field 3</th><th>Order Total</th><th>Recipient</th><th>Carrier Fee</th><th>Service</th><th>Tracking Number</th><th>PO Reference Number</th><th>Memo <select id="memoPreset" class="top-input" style="min-width:150px;padding:4px 8px" onchange="setMemoPreset(this.value)"><option value=""></option><option value="AutoApex">AutoApex</option><option value="AutoPartsNova">AutoPartsNova</option></select></th></tr></thead><tbody></tbody></table></div></div>
 
   <script>
     // theme toggle
@@ -28,6 +28,8 @@
     let currentView = 'report'; // 'report' | 'order'
     let soVerified = false;     // require verification before exporting Sales Order
     let orderMemoDefault = "";  // <-- NEW: default Memo for SO lines
+
+    function skuHasCLX(sku) { return ((sku || "") + "").toUpperCase().includes("CLX"); }
 
     const exportBtn = document.getElementById('exportBtn');
     const verifyBtn = document.getElementById('verifyBtn');
@@ -51,10 +53,11 @@
       }
     }
 
-    // NEW: fill "AutoApex" into Memo for all Sales Order rows
-    function addAutoApexMemo(){
-      orderMemoDefault = "AutoApex";
-      if (currentView === 'order') renderSalesOrder();
+    function setMemoPreset(value){
+      orderMemoDefault = value || "";
+      const memoPreset = document.getElementById("memoPreset");
+      if (memoPreset && memoPreset.value !== orderMemoDefault) memoPreset.value = orderMemoDefault;
+      if (currentView === "order") renderSalesOrder();
     }
 
     document.getElementById('fileInput').addEventListener('change', (e)=>{ handleFiles(e); markDirty(); });
@@ -71,6 +74,7 @@
       // Export filename & button lock/verify visibility
       if(view==='order'){
         document.getElementById('exportFilename').value = 'Sales_Order';
+        const memoPreset = document.getElementById('memoPreset'); if (memoPreset) memoPreset.value = orderMemoDefault;
         verifyBtn.classList.remove('hidden');
         exportBtn.disabled = !soVerified;  // lock until verified
         clearVerifyStatus();
@@ -248,7 +252,7 @@ if (skuHasFBA(r["Item SKU"])) updated["Custom Field 1"] = r["Item SKU"];
       const parts = Object.entries(counts).map(([d,c]) => `${d}: ${c}`);
       document.getElementById('ordersByDate').textContent = `Orders by Date: ${parts.join('    |    ')}`;
 
-      rows.forEach((row, idx) => tbody.appendChild(buildReportRowTr(row, idx)));
+      rows.forEach((row, idx) => { tbody.appendChild(buildReportRowTr(row, idx)); });
     }
 
     // Build Report Row (editable: PO + CFs + Rate/Service/Tracking)
@@ -278,7 +282,7 @@ if (skuHasFBA(r["Item SKU"])) updated["Custom Field 1"] = r["Item SKU"];
           const input = document.createElement('input');
           input.type = 'text';
           input.className = 'cf-edit';
-          input.value = (key === "Service" ? (row[key] || '').toString().replace(/®/g,'') : (row[key] || ''));
+          input.value = (key === "Service" ? (row[key] || '').toString().replace(/®/g,'') : (key === "Rate" ? getSalesReportRateValue(row) : (row[key] || '')));
           input.placeholder = key;
           input.addEventListener('change', (e) => {
             let val = key === "Service" ? e.target.value.replace(/®/g,'') : e.target.value;
@@ -325,8 +329,7 @@ if (skuHasFBA(r["Item SKU"])) updated["Custom Field 1"] = r["Item SKU"];
         let val = '';
 
         if (header === "Carrier Fee") {
-          const fee = row["Rate"];
-          val = (fee !== undefined && fee !== null && fee !== '' ? fee : 0);
+          val = getSalesOrderRateValue(row);
         } else if (key) {
           val = row[key] || '';
         }
@@ -400,10 +403,11 @@ if (skuHasFBA(r["Item SKU"])) updated["Custom Field 1"] = r["Item SKU"];
     // Build SO lines
     function buildSalesOrderLines(baseRow){
       const lines = [];
-      const cfPartsRaw = [baseRow["Custom Field 1"], baseRow["Custom Field 2"]]
-        .map(v => (v || '').toString().trim())
-        .filter(v => v.length > 0);
+      const cf1Raw = (baseRow["Custom Field 1"] || '').toString().trim();
+      const cf2Raw = (baseRow["Custom Field 2"] || '').toString().trim();
+      const cfPartsRaw = [cf1Raw, cf2Raw].filter(v => v.length > 0);
       const hasJWL = cfPartsRaw.some(v => containsCodeAlphaBoundary(v, 'JWL'));
+      const isCLX = skuHasCLX(baseRow["Item SKU"]);
 
       const cfPartsProcessed = transformCFPartsByVendor(baseRow["Item SKU"], cfPartsRaw)
         .filter(v => (v && v.length > 0) && !containsCodeAlphaBoundary(v, 'JWL'))
@@ -429,16 +433,29 @@ if (skuHasFBA(r["Item SKU"])) updated["Custom Field 1"] = r["Item SKU"];
       };
       const baseQty = Number(common["Quantity"]) || 1;
 
-      // Item lines (dedup & qty bump)
-      cfUnique.forEach(val => {
-        const qty = baseQty * (cfCounts[val] || 1);
-        lines.push({...common, "Custom Field 1": val, "Custom Field 2": "", "Custom Field 3": "", "Quantity": qty, "Rate": common["Rate"], "Service":"", "Tracking Number":"" , "Memo": orderMemoDefault});
-      });
+      if (isCLX) {
+        lines.push({...common,
+          "Custom Field 1": cfPartsProcessed[0] || cf1Raw || '',
+          "Custom Field 2": cfPartsProcessed[1] || cf2Raw || '',
+          "Custom Field 3": "",
+          "Quantity": baseQty,
+          "Rate": common["Rate"],
+          "Service":"",
+          "Tracking Number":"",
+          "Memo": orderMemoDefault
+        });
+      } else {
+        // Item lines (dedup & qty bump)
+        cfUnique.forEach(val => {
+          const qty = baseQty * (cfCounts[val] || 1);
+          lines.push({...common, "Custom Field 1": val, "Custom Field 2": "", "Custom Field 3": "", "Quantity": qty, "Rate": common["Rate"], "Service":"", "Tracking Number":"" , "Memo": orderMemoDefault});
+        });
+      }
 
       // Shipping lines (single or multi)
 if (!hasJWL) {
       const multiShip = looksMultiShip(baseRow);
-      if (multiShip){
+      if (multiShip && !isCLX){
         const rates = splitCsv(baseRow["Rate"]);
         const services = splitCsv(baseRow["Service"]);
         const tracks = splitCsv(baseRow["Tracking Number"]);
@@ -503,7 +520,7 @@ if (!hasJWL) {
         "Custom Field 3": r["Custom Field 3"] || "",
         "Order Total": r["Order Total"] || "",
         "Recipient": r["Recipient"] || "",
-        "Carrier Fee": (r["Rate"] !== undefined && r["Rate"] !== null && r["Rate"] !== '' ? r["Rate"] : 0),
+        "Carrier Fee": getSalesOrderRateValue(r),
         "Service": (r["Service"] || ""),
         "Tracking Number": r["Tracking Number"] || "",
         "PO Reference Number": r["PO Number"] || "",
@@ -517,7 +534,7 @@ if (!hasJWL) {
         "Recipient","Rate","Service","Tracking Number","PO Number"
       ];
       data = masterDataRows.map(r => {
-        const obj = {}; headers.forEach(h => obj[h] = r[h] ?? ''); return obj;
+        const obj = {}; headers.forEach(h => obj[h] = (h === 'Rate' ? getSalesReportRateValue(r) : (r[h] ?? ''))); return obj;
       });
     }
     return { headers, data };
@@ -544,6 +561,22 @@ if (!hasJWL) {
 
   function isDropshipShipFrom(s){
     return /DROPSHIP/i.test(String(s||'')); // matches Usauto Dropship, Meyer Dropship, Tonsa Dropship, etc.
+  }
+
+  function isZeroLikeAmount(v){
+    const s = String(v == null ? '' : v).trim().replace(/,/g, '');
+    return s !== '' && !Number.isNaN(Number(s)) && Number(s) === 0;
+  }
+
+  function getSalesReportRateValue(row){
+    const rate = row ? row["Rate"] : '';
+    if (row && isDropshipShipFrom(row["Ship From"]) && (rate === '' || rate == null || isZeroLikeAmount(rate))) return '';
+    return rate ?? '';
+  }
+
+  function getSalesOrderRateValue(row){
+    const rate = row ? row["Rate"] : '';
+    return (rate !== undefined && rate !== null && rate !== '') ? rate : '0.00';
   }
 
   // Token-aware "JWL" check, matching your containsCodeAlphaBoundary logic
@@ -628,7 +661,13 @@ if (!hasJWL) {
         }
 
         // Vendor + Carrier Fee + missing PO (unexpected fee scenario)
-        if (shipFromIsVendor(row["Ship From"]) && String(row["Rate"]||'').trim()!=='' && (!row["PO Number"] || String(row["PO Number"]).trim()==='')){
+        // Ignore Dropship rows when the source amount is intentionally blank/zero:
+        // Sales Order may display 0.00, but Sales Report is supposed to stay blank.
+        const rawRate = row["Rate"];
+        const hasMeaningfulVendorFee = !isDropshipShipFrom(row["Ship From"])
+          ? String(rawRate||'').trim() !== ''
+          : !(rawRate === '' || rawRate == null || isZeroLikeAmount(rawRate));
+        if (shipFromIsVendor(row["Ship From"]) && hasMeaningfulVendorFee && (!row["PO Number"] || String(row["PO Number"]).trim()==='')){
           issues.push(`Order ${ord}: Carrier Fee present but Ship From is vendor and PO Number is empty.`);
         }
 
@@ -690,7 +729,7 @@ if (!hasJWL) {
           "Custom Field 3": r["Custom Field 3"] || "",
           "Order Total": r["Order Total"] || "",
           "Recipient": r["Recipient"] || "",
-          "Carrier Fee": (r["Rate"] !== undefined && r["Rate"] !== null && r["Rate"] !== '' ? r["Rate"] : 0),
+          "Carrier Fee": getSalesOrderRateValue(r),
           "Service": (r["Service"] || ""),
           "Tracking Number": r["Tracking Number"] || "",
           "PO Reference Number": r["PO Number"] || "",
@@ -700,7 +739,7 @@ if (!hasJWL) {
         headers = ["Order Date","Ship From","Order Number","Item SKU","Quantity","Custom Field 1","Custom Field 2","Custom Field 3","Order Total","Recipient","Rate","Service","Tracking Number","PO Number"];
         data = masterDataRows.map(r => {
           const obj = {};
-          headers.forEach(h => obj[h] = r[h] || '');
+          headers.forEach(h => obj[h] = (h === 'Rate' ? getSalesReportRateValue(r) : (r[h] || '')));
           return obj;
         });
       }
@@ -715,6 +754,7 @@ if (!hasJWL) {
       masterDataRows = []; masterOrderNumbers.clear(); isFirstFile = true; updateFilesCount = 0;
       soVerified = false; exportBtn.disabled = (currentView==='order');
       orderMemoDefault = ""; // reset memo default
+      const memoPreset = document.getElementById("memoPreset"); if (memoPreset) memoPreset.value = "";
       document.getElementById('fileInput').value = '';
       document.getElementById('totalOrders').textContent = 'Total Orders: 0';
       document.getElementById('ordersByDate').textContent = currentView==='order' ? 'Lines by Date:' : 'Orders by Date:';
@@ -746,6 +786,10 @@ if (!hasJWL) {
   function hasSkuPLXorPAIR(s){
     s = String(s||'').toUpperCase();
     return /\bPLX\b/.test(s) || /\bPAIR\b/.test(s);
+  }
+  function hasSkuCLX(s){
+    s = String(s||'').toUpperCase();
+    return /\bCLX\b/.test(s);
   }
 
   function hasSkuFBA(s){
@@ -817,6 +861,11 @@ if (!hasJWL) {
         const isFBAOrderSku   = hasSkuFBA(val.itemSku);
         const isFbaShipFrom   = isFBAShipFrom(val.shipFrom);
         const isDropshipShip  = isDropshipShipFrom(val.shipFrom);
+        const isCLXSku        = hasSkuCLX(val.itemSku);
+
+        if (idx.ITEM_SKU != null && isCLXSku && !isEmpty(val.cf2)) {
+          getCell(tr, idx.ITEM_SKU)?.classList.add('kp-hl-yellow');
+        }
 
         // ---------- RED rules ----------
 
@@ -1171,6 +1220,7 @@ if (!hasJWL) {
     return headerIndex(table,'PO REFERENCE NUMBER') >= 0;
   }
   function hasPLXorPAIR(s){ s = norm(s); return /\bPLX\b/.test(s) || /\bPAIR\b/.test(s); }
+  function hasCLX(s){ s = norm(s); return /\bCLX\b/.test(s); }
   function hasFBA(s){ s = norm(s); return /(^|[^A-Z0-9])FBA([^A-Z0-9]|$)/.test(s); }
   function shipFromVendor(s){ s = norm(s); return (/\bUSAUTO\b/.test(s) || /\bUS AUTO\b/.test(s) || /MEYER/.test(s) || /TONSA/.test(s)); }
 
@@ -1229,6 +1279,7 @@ if (!hasJWL) {
       return '<span class="kp-tip-head">Missing value</span><span class="kp-tip-rule">'+(header||'This field')+' is required.</span>';
     }
     if (clsYellow){
+      if (idx===idxSKU && hasCLX(sku)) return '<span class="kp-tip-head">CLX review needed</span><span class="kp-tip-rule">CLX SKU detected with Custom Field 2 present. This line was not duplicated so you can review the CF manually.</span>';
       if (idxService===idx) return '<span class="kp-tip-head">Carrier Missing</span><span class="kp-tip-rule">Please provide a carrier/service.</span>';
       if (idxRate===idx) return '<span class="kp-tip-head">Carrier Fee Missing</span><span class="kp-tip-rule">Please provide a fee if applicable.</span>';
       if (idxTrack===idx) return '<span class="kp-tip-head">Tracking Number Missing</span><span class="kp-tip-rule">Add tracking when available.</span>';
